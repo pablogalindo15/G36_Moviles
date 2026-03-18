@@ -1,0 +1,9 @@
+package com.smartfinance.data.onboarding
+
+import com.smartfinance.core.model.FinancialSetup
+import com.smartfinance.core.model.GeneratedPlan
+
+interface OnboardingRepository {
+    suspend fun saveFinancialSetup(setup: FinancialSetup): String
+    suspend fun saveGeneratedPlan(plan: GeneratedPlan)
+}
