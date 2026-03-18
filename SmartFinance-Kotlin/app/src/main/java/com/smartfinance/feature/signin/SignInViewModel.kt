@@ -26,7 +26,7 @@ class SignInViewModel @Inject constructor(
                 val result = applicationService.execute(SignInDTO(email, password))
                 _uiState.value = UiState.Success(result.userId)
             } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.message ?: "Error")
+                _uiState.value = UiState.Error("Usuario o contraseña incorrectos")
             }
         }
     }

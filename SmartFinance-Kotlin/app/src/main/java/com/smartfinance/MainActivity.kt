@@ -1,6 +1,7 @@
 package com.smartfinance
 
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
@@ -22,5 +23,11 @@ class MainActivity : AppCompatActivity() {
         val navController = navHostFragment.navController
 
         binding.bottomNav.setupWithNavController(navController)
+
+        val hideNavDestinations = setOf(R.id.signInFragment, R.id.registerFragment, R.id.onboardingFragment)
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            binding.bottomNav.visibility =
+                if (destination.id in hideNavDestinations) View.GONE else View.VISIBLE
+        }
     }
 }
