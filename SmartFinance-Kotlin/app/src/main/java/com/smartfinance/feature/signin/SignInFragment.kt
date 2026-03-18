@@ -40,8 +40,16 @@ class SignInFragment : Fragment() {
 
     private fun setupUI() {
         binding.btnSignIn.setOnClickListener {
-            val email = binding.etEmail.text.toString()
-            val password = binding.etPassword.text.toString()
+            val email = binding.etEmail.text.toString().trim()
+            val password = binding.etPassword.text.toString().trim()
+
+            if (email.isEmpty() || password.isEmpty()) {
+                binding.tvError.text = "Por favor ingresa tu correo y contraseña"
+                binding.tvError.visibility = View.VISIBLE
+                return@setOnClickListener
+            }
+
+            binding.tvError.visibility = View.GONE
             viewModel.signIn(email, password)
         }
 
