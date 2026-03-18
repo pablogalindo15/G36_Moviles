@@ -58,7 +58,6 @@ class SignInFragment : Fragment() {
                     is UiState.Loading -> binding.progressBar.visibility = View.VISIBLE
                     is UiState.Success -> {
                         binding.progressBar.visibility = View.GONE
-                        val action = findNavController().navigate(R.id.action_login_to_register)
                     }
                     is UiState.Error -> {
                         binding.progressBar.visibility = View.GONE
