@@ -1,0 +1,16 @@
+package com.smartfinance.core.model
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class Profile(
+    @SerialName("id")
+    val id: String,
+
+    @SerialName("full_name")
+    val fullName: String,
+
+    @SerialName("avatar_url")
+    val avatarUrl: String? = null
+)

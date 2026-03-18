@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="register_back">Go back</string>
+    <string name="register_title">Create your account</string>
+    <string name="register_subtitle">Join SmartFinance to start managing your money with a personalized plan.</string>
+    <string name="register_profile_photo">Profile photo</string>
+    <string name="register_profile_title">Add a profile photo</string>
+    <string name="register_profile_subtitle">Personalize your account so your team can recognize you.</string>
+    <string name="register_full_name_label">Full name</string>
+    <string name="register_email_label">Email</string>
+    <string name="register_password_label">Password</string>
+    <string name="register_confirm_password_label">Confirm password</string>
+    <string name="register_terms_text">I agree to the Terms and Privacy Policy</string>
+    <string name="register_button">Create account</string>
+    <string name="register_login_cta">Already have an account? Log in</string>
+    <string name="register_photo_placeholder_message">Profile photo upload can be connected in the next merge.</string>
+    <string name="register_login_pending_message">Login navigation can be connected once the login screen is merged.</string>
+</resources>
