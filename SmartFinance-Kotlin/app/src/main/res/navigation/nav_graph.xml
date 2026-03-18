@@ -17,4 +17,16 @@
             android:defaultValue="anonymous" />
     </fragment>
 
+    <fragment
+        android:id="@+id/signInFragment"
+        android:name="com.smartfinance.feature.signin.SignInFragment">
+
+        <action
+            android:id="@+id/action_login_to_register"
+            app:destination="@id/registerFragment" />
+
+    </fragment>
+
+
+
 </navigation>
