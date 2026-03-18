@@ -7,6 +7,8 @@ import com.smartfinance.data.onboarding.SupabasePlanAdapter
 import com.smartfinance.data.register.RegisterRemoteDataSource
 import com.smartfinance.data.register.RegisterRepository
 import com.smartfinance.data.register.SupabaseRegisterAdapter
+import com.smartfinance.data.signin.SignInRepository
+import com.smartfinance.data.signin.SupabaseSignInAdapter
 import com.smartfinance.domain.onboarding.OnboardingApplicationService
 import com.smartfinance.domain.onboarding.OnboardingFacade
 import com.smartfinance.domain.register.RegisterApplicationService
@@ -92,6 +94,11 @@ object AppModule {
     ): RegisterApplicationService {
         return RegisterApplicationService(facade)
     }
+
+    @Provides
+    fun provideSignInRepository(
+        adapter: SupabaseSignInAdapter
+    ): SignInRepository = adapter
 
 }
 
