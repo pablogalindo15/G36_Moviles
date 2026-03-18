@@ -67,6 +67,8 @@ dependencies {
     // Supabase
     implementation(libs.supabase.postgrest)
     implementation(libs.ktor.client.okhttp)
+    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.6.1")
+
 
     // Coroutines
     implementation(libs.coroutines.android)

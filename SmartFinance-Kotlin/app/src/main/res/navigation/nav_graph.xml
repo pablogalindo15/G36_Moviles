@@ -3,18 +3,26 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/onboardingFragment">
+    app:startDestination="@id/registerFragment">
+
+    <fragment
+        android:id="@+id/registerFragment"
+        android:name="com.smartfinance.feature.register.RegisterFragment"
+        android:label="Register"
+        tools:layout="@layout/fragment_register">
+        <action
+            android:id="@+id/action_registerFragment_to_onboardingFragment"
+            app:destination="@id/onboardingFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/onboardingFragment"
         android:name="com.smartfinance.feature.onboarding.OnboardingFragment"
         android:label="Onboarding"
         tools:layout="@layout/fragment_onboarding">
-
         <argument
             android:name="userId"
-            app:argType="string"
-            android:defaultValue="anonymous" />
+            app:argType="string" />
     </fragment>
 
 </navigation>

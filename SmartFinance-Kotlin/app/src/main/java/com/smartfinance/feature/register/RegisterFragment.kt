@@ -1,0 +1,162 @@
+package com.smartfinance.feature.register
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.core.os.bundleOf
+import androidx.core.widget.doAfterTextChanged
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
+import com.google.android.material.snackbar.Snackbar
+import com.smartfinance.R
+import com.smartfinance.core.model.UiState
+import com.smartfinance.databinding.FragmentRegisterBinding
+import com.smartfinance.domain.register.RegisterRequestDTO
+import com.smartfinance.domain.register.RegisterValidationResult
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+
+@AndroidEntryPoint
+class RegisterFragment : Fragment() {
+
+    private var _binding: FragmentRegisterBinding? = null
+    private val binding get() = _binding!!
+
+    private val viewModel: RegisterViewModel by viewModels()
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentRegisterBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupActions()
+        setupInlineErrorReset()
+        observeValidationState()
+        observeUiState()
+    }
+
+    private fun setupActions() {
+        binding.buttonBack.setOnClickListener {
+            findNavController().navigateUp()
+        }
+
+        binding.profilePhotoCard.setOnClickListener {
+            Snackbar.make(
+                binding.root,
+                getString(R.string.register_photo_placeholder_message),
+                Snackbar.LENGTH_SHORT
+            ).show()
+        }
+
+        binding.buttonCreateAccount.setOnClickListener {
+            val dto = RegisterRequestDTO(
+                fullName = binding.fullNameInput.text?.toString().orEmpty(),
+                email = binding.emailInput.text?.toString().orEmpty(),
+                password = binding.passwordInput.text?.toString().orEmpty(),
+                confirmPassword = binding.confirmPasswordInput.text?.toString().orEmpty(),
+                acceptedTerms = binding.termsCheckbox.isChecked
+            )
+            viewModel.submitRegister(dto)
+        }
+
+        binding.loginCta.setOnClickListener {
+            Snackbar.make(
+                binding.root,
+                getString(R.string.register_login_pending_message),
+                Snackbar.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun setupInlineErrorReset() {
+        binding.fullNameInput.doAfterTextChanged {
+            binding.fullNameLayout.error = null
+        }
+        binding.emailInput.doAfterTextChanged {
+            binding.emailLayout.error = null
+        }
+        binding.passwordInput.doAfterTextChanged {
+            binding.passwordLayout.error = null
+        }
+        binding.confirmPasswordInput.doAfterTextChanged {
+            binding.confirmPasswordLayout.error = null
+        }
+        binding.termsCheckbox.setOnCheckedChangeListener { _, _ ->
+            binding.termsErrorText.visibility = View.GONE
+        }
+    }
+
+    private fun observeValidationState() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.validationState.collect { validation ->
+                    renderValidation(validation)
+                }
+            }
+        }
+    }
+
+    private fun observeUiState() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    when (state) {
+                        is UiState.Idle -> {
+                            binding.progressIndicator.visibility = View.GONE
+                            binding.buttonCreateAccount.isEnabled = true
+                        }
+                        is UiState.Loading -> {
+                            binding.progressIndicator.visibility = View.VISIBLE
+                            binding.buttonCreateAccount.isEnabled = false
+                        }
+                        is UiState.Success -> {
+                            binding.progressIndicator.visibility = View.GONE
+                            binding.buttonCreateAccount.isEnabled = true
+                            findNavController().navigate(
+                                R.id.action_registerFragment_to_onboardingFragment,
+                                bundleOf("userId" to state.data.userId)
+                            )
+                            viewModel.resetUiState()
+                        }
+                        is UiState.Error -> {
+                            binding.progressIndicator.visibility = View.GONE
+                            binding.buttonCreateAccount.isEnabled = true
+                            Snackbar.make(binding.root, state.message, Snackbar.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun renderValidation(validation: RegisterValidationResult) {
+        binding.fullNameLayout.error = validation.fullNameError
+        binding.emailLayout.error = validation.emailError
+        binding.passwordLayout.error = validation.passwordError
+        binding.confirmPasswordLayout.error = validation.confirmPasswordError
+
+        if (validation.termsError == null) {
+            binding.termsErrorText.visibility = View.GONE
+            binding.termsErrorText.text = null
+        } else {
+            binding.termsErrorText.visibility = View.VISIBLE
+            binding.termsErrorText.text = validation.termsError
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}

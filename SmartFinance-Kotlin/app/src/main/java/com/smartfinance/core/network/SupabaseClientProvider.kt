@@ -3,6 +3,7 @@ package com.smartfinance.core.network
 import com.smartfinance.BuildConfig
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.postgrest.Postgrest
 
 object SupabaseClientProvider {
@@ -15,6 +16,7 @@ object SupabaseClientProvider {
             supabaseKey = BuildConfig.SUPABASE_ANON_KEY
         ) {
             install(Postgrest)
+            install(Auth)
         }
     }
 }

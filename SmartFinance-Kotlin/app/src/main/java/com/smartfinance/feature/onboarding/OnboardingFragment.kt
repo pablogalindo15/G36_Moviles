@@ -90,6 +90,9 @@ class OnboardingFragment : Fragment() {
         binding.btnGenerate.setOnClickListener {
             if (!validateForm()) return@setOnClickListener
 
+            val userId = requireArguments().getString("userId")
+                ?: error("userId is required")
+
             val dto = PlanRequestDTO(
                 userId = arguments?.getString("userId") ?: "anonymous",
                 currency = binding.currencyDropdown.text.toString(),
