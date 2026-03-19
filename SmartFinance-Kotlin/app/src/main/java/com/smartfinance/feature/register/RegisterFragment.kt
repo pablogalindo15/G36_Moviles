@@ -44,6 +44,7 @@ class RegisterFragment : Fragment() {
         setupInlineErrorReset()
         observeValidationState()
         observeUiState()
+        setupLoginCtaStyle()
     }
 
     private fun setupActions() {
@@ -71,12 +72,26 @@ class RegisterFragment : Fragment() {
         }
 
         binding.loginCta.setOnClickListener {
-            Snackbar.make(
-                binding.root,
-                getString(R.string.register_login_pending_message),
-                Snackbar.LENGTH_SHORT
-            ).show()
+            findNavController().navigate(R.id.signInFragment)
         }
+
+    }
+
+    private fun setupLoginCtaStyle() {
+        val text = "Already have an account? Log in"
+        val spannable = android.text.SpannableString(text)
+
+        val start = text.indexOf("Log in")
+        val end = start + "Log in".length
+
+        spannable.setSpan(
+            android.text.style.UnderlineSpan(),
+            start,
+            end,
+            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+
+        binding.loginCta.text = spannable
     }
 
     private fun setupInlineErrorReset() {
