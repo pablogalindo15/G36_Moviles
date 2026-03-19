@@ -23,6 +23,11 @@
         <argument
             android:name="userId"
             app:argType="string" />
+        <action
+            android:id="@+id/action_onboarding_to_signIn"
+            app:destination="@id/signInFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true" />
     </fragment>
 
     <fragment

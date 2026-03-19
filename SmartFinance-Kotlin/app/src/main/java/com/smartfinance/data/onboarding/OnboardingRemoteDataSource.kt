@@ -20,4 +20,16 @@ class OnboardingRemoteDataSource(
     suspend fun insertGeneratedPlan(plan: GeneratedPlan) {
         supabaseClient.from("generated_plans").insert(plan)
     }
+
+    suspend fun fetchFinancialSetup(userId: String): FinancialSetup? {
+        return supabaseClient.from("financial_setups")
+            .select { filter { eq("user_id", userId) } }
+            .decodeSingleOrNull<FinancialSetup>()
+    }
+
+    suspend fun fetchGeneratedPlan(userId: String): GeneratedPlan? {
+        return supabaseClient.from("generated_plans")
+            .select { filter { eq("user_id", userId) } }
+            .decodeSingleOrNull<GeneratedPlan>()
+    }
 }

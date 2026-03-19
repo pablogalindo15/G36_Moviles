@@ -8,6 +8,7 @@ import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.datepicker.MaterialDatePicker
@@ -15,17 +16,16 @@ import com.google.android.material.snackbar.Snackbar
 import com.smartfinance.R
 import com.smartfinance.core.model.UiState
 import com.smartfinance.databinding.FragmentOnboardingBinding
+import com.smartfinance.domain.onboarding.ExistingPlanVO
 import com.smartfinance.domain.onboarding.PlanRequestDTO
 import com.smartfinance.domain.onboarding.PlanVO
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @AndroidEntryPoint
 class OnboardingFragment : Fragment() {
@@ -53,7 +53,36 @@ class OnboardingFragment : Fragment() {
         setupCurrencySpinner()
         setupDatePicker()
         setupGenerateButton()
+        setupSignOutButton()
         observeUiState()
+        observeExistingPlan()
+        observeSignOut()
+        val userId = arguments?.getString("userId") ?: return
+        viewModel.loadExistingPlan(userId)
+    }
+
+    private fun setupSignOutButton() {
+        binding.btnSignOut.setOnClickListener {
+            viewModel.signOut()
+        }
+    }
+
+    private fun observeSignOut() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.signOutState.collect { state ->
+                    when (state) {
+                        is UiState.Success -> {
+                            findNavController().navigate(R.id.action_onboarding_to_signIn)
+                        }
+                        is UiState.Error -> {
+                            Snackbar.make(binding.root, state.message, Snackbar.LENGTH_LONG).show()
+                        }
+                        else -> Unit
+                    }
+                }
+            }
+        }
     }
 
     private fun setupCurrencySpinner() {
@@ -94,7 +123,7 @@ class OnboardingFragment : Fragment() {
                 ?: error("userId is required")
 
             val dto = PlanRequestDTO(
-                userId = arguments?.getString("userId") ?: "anonymous",
+                userId = userId,
                 currency = binding.currencyDropdown.text.toString(),
                 monthlyIncome = binding.monthlyIncomeInput.text.toString().toDouble(),
                 fixedMonthlyExpenses = binding.fixedExpensesInput.text.toString().toDouble(),
@@ -231,16 +260,67 @@ class OnboardingFragment : Fragment() {
     private fun showResult(plan: PlanVO) {
         binding.resultSection.visibility = View.VISIBLE
 
-        val format = NumberFormat.getCurrencyInstance(Locale.US).apply {
-            currency = java.util.Currency.getInstance(plan.currency)
-        }
+        fun formatAmount(amount: Double) =
+            "${plan.currency} ${"%.2f".format(amount)}"
 
-        binding.safeToSpendAmount.text = format.format(plan.proratedSafeToSpend)
-        binding.weeklyCapAmount.text = format.format(plan.weeklyCap)
-        binding.targetSavingsAmount.text = format.format(plan.monthlySavingsGoal)
+        binding.safeToSpendAmount.text = formatAmount(plan.proratedSafeToSpend)
+        binding.weeklyCapAmount.text = formatAmount(plan.weeklyCap)
+        binding.targetSavingsAmount.text = formatAmount(plan.monthlySavingsGoal)
 
         binding.insightMessage.text = plan.contextualInsightMessage
         binding.proratedBanner.visibility = if (plan.isProrated) View.VISIBLE else View.GONE
+    }
+
+    private fun observeExistingPlan() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.existingPlanState.collect { state ->
+                    when (state) {
+                        is UiState.Idle -> {
+                            binding.progressIndicator.visibility = View.GONE
+                            binding.btnGenerate.visibility = View.VISIBLE
+                        }
+                        is UiState.Loading -> {
+                            binding.progressIndicator.visibility = View.VISIBLE
+                            binding.btnGenerate.visibility = View.GONE
+                        }
+                        is UiState.Success -> {
+                            binding.progressIndicator.visibility = View.GONE
+                            binding.btnGenerate.visibility = View.GONE
+                            prefillForm(state.data)
+                            disableForm()
+                            showResult(state.data.plan)
+                        }
+                        is UiState.Error -> {
+                            binding.progressIndicator.visibility = View.GONE
+                            binding.btnGenerate.visibility = View.VISIBLE
+                            Snackbar.make(binding.root, "Load error: ${state.message}", Snackbar.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun prefillForm(data: ExistingPlanVO) {
+        binding.currencyDropdown.setText(data.currency, false)
+        binding.monthlyIncomeInput.setText(data.monthlyIncome.toString())
+        binding.fixedExpensesInput.setText(data.fixedMonthlyExpenses.toString())
+        binding.savingsGoalInput.setText(data.monthlySavingsGoal.toString())
+        selectedPayday = LocalDate.parse(data.nextPayday)
+        binding.nextPaydayInput.setText(
+            selectedPayday!!.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
+        )
+    }
+
+    private fun disableForm() {
+        binding.monthlyIncomeInput.isEnabled = false
+        binding.fixedExpensesInput.isEnabled = false
+        binding.savingsGoalInput.isEnabled = false
+        binding.nextPaydayInput.isEnabled = false
+        binding.currencyDropdown.isEnabled = false
+        binding.currencyLayout.isEnabled = false
+        binding.nextPaydayLayout.isEnabled = false
     }
 
     override fun onDestroyView() {

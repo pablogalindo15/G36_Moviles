@@ -24,11 +24,9 @@ class OnboardingApplicationService(
         val weeklyCap = if (weeks > 0) proratedSafeToSpend / weeks else 0.0
 
         val insightMessage = if (isProrated) {
-            "Your plan is adjusted for $daysUntilPayday days until your next payday. " +
-                "After that, your full monthly safe-to-spend will be \$${String.format("%.2f", safeToSpendMonthly)}."
+            "Your plan has been adjusted to help you stay balanced until your next payday."
         } else {
-            "You have a full pay cycle ahead. Stay within your weekly cap of " +
-                "\$${String.format("%.2f", weeklyCap)} to meet your savings goal."
+            "You have a full pay cycle ahead. Stay within your weekly cap to meet your savings goal."
         }
 
         // Persist financial setup, get back the generated UUID
@@ -61,6 +59,36 @@ class OnboardingApplicationService(
             weeklyCap = weeklyCap,
             isProrated = isProrated,
             contextualInsightMessage = insightMessage
+        )
+    }
+
+    suspend fun fetchExistingPlan(userId: String): ExistingPlanVO? {
+        val setup = facade.fetchFinancialSetup(userId) ?: return null
+        val plan = facade.fetchGeneratedPlan(userId) ?: return null
+
+        val safeToSpendMonthly = setup.monthlyIncome - setup.fixedMonthlyExpenses - setup.monthlySavingsGoal
+        val nextPayday = LocalDate.parse(setup.nextPayday)
+        val today = LocalDate.now()
+        val daysUntilPayday = ChronoUnit.DAYS.between(today, nextPayday).toInt()
+        val isProrated = daysUntilPayday in 1 until 30
+
+        val planVO = PlanVO(
+            currency = setup.currency,
+            monthlySavingsGoal = setup.monthlySavingsGoal,
+            safeToSpendMonthly = safeToSpendMonthly,
+            proratedSafeToSpend = plan.safeToSpendUntilNextPayday,
+            weeklyCap = plan.weeklyCap,
+            isProrated = isProrated,
+            contextualInsightMessage = plan.contextualInsightMessage
+        )
+
+        return ExistingPlanVO(
+            currency = setup.currency,
+            monthlyIncome = setup.monthlyIncome,
+            fixedMonthlyExpenses = setup.fixedMonthlyExpenses,
+            monthlySavingsGoal = setup.monthlySavingsGoal,
+            nextPayday = setup.nextPayday,
+            plan = planVO
         )
     }
 }

@@ -4,6 +4,7 @@ import com.smartfinance.core.model.FinancialSetup
 import com.smartfinance.core.model.GeneratedPlan
 import com.smartfinance.data.onboarding.OnboardingRepository
 
+
 class OnboardingFacade(
     private val repository: OnboardingRepository
 ) {
@@ -14,5 +15,13 @@ class OnboardingFacade(
 
     suspend fun saveGeneratedPlan(plan: GeneratedPlan) {
         repository.saveGeneratedPlan(plan)
+    }
+
+    suspend fun fetchFinancialSetup(userId: String): FinancialSetup? {
+        return repository.fetchFinancialSetup(userId)
+    }
+
+    suspend fun fetchGeneratedPlan(userId: String): GeneratedPlan? {
+        return repository.fetchGeneratedPlan(userId)
     }
 }

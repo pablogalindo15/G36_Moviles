@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SmartFinance</string>
+    <string name="sign_out">Sign out</string>
     <string name="last_step">Last step</string>
     <string name="setup_progress">SETUP PROGRESS</string>
     <string name="progress_percent">80%</string>
@@ -13,9 +14,13 @@
     <string name="next_payday_label">Next Payday</string>
     <string name="generate_plan">Generate my first plan</string>
     <string name="your_instant_plan">Your Instant Plan</string>
+    <string name="plan_results_title">Your plan results</string>
     <string name="safe_to_spend">Safe to Spend</string>
+    <string name="safe_to_spend_label">Safe to spend until next payday</string>
     <string name="weekly_cap">Weekly Cap</string>
+    <string name="weekly_cap_label">Recommended weekly cap</string>
     <string name="target_savings">Target Savings</string>
+    <string name="contextual_insight_label">Contextual insight</string>
     <string name="prorated_message">This amount is prorated based on your next payday date</string>
     <string name="nav_home">Home</string>
     <string name="nav_plans">Plans</string>
