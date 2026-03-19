@@ -33,6 +33,12 @@
             android:id="@+id/action_login_to_register"
             app:destination="@id/registerFragment" />
 
+        <action
+            android:id="@+id/action_signIn_to_onboarding"
+            app:destination="@id/onboardingFragment"
+            app:popUpTo="@id/signInFragment"
+            app:popUpToInclusive="true" />
+
     </fragment>
 
 
