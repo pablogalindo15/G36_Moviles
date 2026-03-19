@@ -66,6 +66,8 @@ class SignInFragment : Fragment() {
                     is UiState.Loading -> binding.progressBar.visibility = View.VISIBLE
                     is UiState.Success -> {
                         binding.progressBar.visibility = View.GONE
+                        val bundle = android.os.Bundle().apply { putString("userId", state.data) }
+                        findNavController().navigate(R.id.action_signIn_to_onboarding, bundle)
                     }
                     is UiState.Error -> {
                         binding.progressBar.visibility = View.GONE
