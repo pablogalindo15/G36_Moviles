@@ -6,4 +6,6 @@ import com.smartfinance.core.model.GeneratedPlan
 interface OnboardingRepository {
     suspend fun saveFinancialSetup(setup: FinancialSetup): String
     suspend fun saveGeneratedPlan(plan: GeneratedPlan)
+    suspend fun fetchFinancialSetup(userId: String): FinancialSetup?
+    suspend fun fetchGeneratedPlan(userId: String): GeneratedPlan?
 }

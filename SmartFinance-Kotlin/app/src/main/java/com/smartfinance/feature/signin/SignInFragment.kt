@@ -6,12 +6,13 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.smartfinance.core.model.UiState
 import com.smartfinance.databinding.FragmentSigninBinding
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.smartfinance.R
 
@@ -60,7 +61,8 @@ class SignInFragment : Fragment() {
 
     private fun observeState() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.uiState.collectLatest { state ->
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.uiState.collect { state ->
                 when (state) {
                     is UiState.Idle -> Unit
                     is UiState.Loading -> binding.progressBar.visibility = View.VISIBLE
@@ -75,6 +77,7 @@ class SignInFragment : Fragment() {
                         binding.tvError.visibility = View.VISIBLE
                     }
                 }
+            }
             }
         }
     }

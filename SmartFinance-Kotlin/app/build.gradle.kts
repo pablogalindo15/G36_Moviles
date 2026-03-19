@@ -66,6 +66,7 @@ dependencies {
 
     // Supabase
     implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.auth)
     implementation(libs.ktor.client.okhttp)
 
     // Coroutines
