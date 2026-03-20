@@ -60,7 +60,8 @@ class RegisterViewModel @Inject constructor(
                     fullName = dto.fullName,
                     email = dto.email,
                     password = dto.password,
-                    confirmPassword = dto.confirmPassword
+                    confirmPassword = dto.confirmPassword,
+                    profileImage = dto.profileImage
                 )
                 _uiState.value = UiState.Success(
                     RegisterResultVO(

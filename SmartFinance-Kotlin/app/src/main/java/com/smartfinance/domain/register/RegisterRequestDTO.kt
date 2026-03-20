@@ -5,5 +5,6 @@ data class RegisterRequestDTO(
     val email: String,
     val password: String,
     val confirmPassword: String,
-    val acceptedTerms: Boolean
+    val acceptedTerms: Boolean,
+    val profileImage: ByteArray? = null
 )
