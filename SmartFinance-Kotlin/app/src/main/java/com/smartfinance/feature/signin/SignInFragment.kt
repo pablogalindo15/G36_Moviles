@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.snackbar.Snackbar
 import com.smartfinance.core.model.UiState
 import com.smartfinance.databinding.FragmentSigninBinding
 import dagger.hilt.android.AndroidEntryPoint
@@ -37,6 +38,12 @@ class SignInFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         setupUI()
         observeState()
+
+        val message = arguments?.getString("successMessage")
+
+        message?.let {
+            Snackbar.make(view, it, Snackbar.LENGTH_LONG).show()
+        }
     }
 
     private fun setupUI() {

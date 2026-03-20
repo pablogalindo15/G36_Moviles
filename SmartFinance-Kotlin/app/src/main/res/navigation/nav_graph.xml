@@ -34,6 +34,11 @@
         android:id="@+id/signInFragment"
         android:name="com.smartfinance.feature.signin.SignInFragment">
 
+        <argument
+            android:name="successMessage"
+            app:argType="string"
+            app:nullable="true" />
+
         <action
             android:id="@+id/action_login_to_register"
             app:destination="@id/registerFragment" />
