@@ -8,7 +8,8 @@ class RegisterApplicationService(
         fullName: String,
         email: String,
         password: String,
-        confirmPassword: String
+        confirmPassword: String,
+        profileImage: ByteArray? = null
     ): String {
         val cleanName = fullName.trim()
         val cleanEmail = email.trim()
@@ -23,7 +24,8 @@ class RegisterApplicationService(
             RegisterUserRequest(
                 fullName = cleanName,
                 email = cleanEmail,
-                password = password
+                password = password,
+                profileImage = profileImage
             )
         )
     }

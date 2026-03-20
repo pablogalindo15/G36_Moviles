@@ -20,10 +20,18 @@ import com.smartfinance.domain.register.RegisterRequestDTO
 import com.smartfinance.domain.register.RegisterValidationResult
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import android.net.Uri
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import java.io.File
 
 @AndroidEntryPoint
 class RegisterFragment : Fragment() {
 
+    private var selectedImageUri: Uri? = null
+    private var cameraImageUri: Uri? = null
     private var _binding: FragmentRegisterBinding? = null
     private val binding get() = _binding!!
 
@@ -47,17 +55,70 @@ class RegisterFragment : Fragment() {
         setupLoginCtaStyle()
     }
 
+    private val pickImageLauncher = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            selectedImageUri = uri
+            binding.profileImageView.setImageURI(uri)
+        }
+    }
+
+    private val takePictureLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraImageUri != null) {
+            selectedImageUri = cameraImageUri
+            binding.profileImageView.setImageURI(cameraImageUri)
+        }
+    }
+
+    private fun createImageUri(): Uri {
+        val imageFile = File.createTempFile(
+            "profile_${System.currentTimeMillis()}",
+            ".jpg",
+            requireContext().cacheDir
+        )
+
+        return FileProvider.getUriForFile(
+            requireContext(),
+            "${requireContext().packageName}.provider",
+            imageFile
+        )
+    }
+
+    private fun uriToByteArray(uri: Uri): ByteArray? {
+        return try {
+            requireContext().contentResolver.openInputStream(uri)?.use { 
+                it.readBytes()
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun setupActions() {
         binding.buttonBack.setOnClickListener {
             findNavController().navigateUp()
         }
 
         binding.profilePhotoCard.setOnClickListener {
-            Snackbar.make(
-                binding.root,
-                getString(R.string.register_photo_placeholder_message),
-                Snackbar.LENGTH_SHORT
-            ).show()
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Profile photo")
+                .setItems(arrayOf("Take photo", "Choose from gallery")) { _, which ->
+                    when (which) {
+                        0 -> {
+                            cameraImageUri = createImageUri()
+                            takePictureLauncher.launch(cameraImageUri)
+                        }
+                        1 -> {
+                            pickImageLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    }
+                }
+                .show()
         }
 
         binding.buttonCreateAccount.setOnClickListener {
@@ -66,7 +127,8 @@ class RegisterFragment : Fragment() {
                 email = binding.emailInput.text?.toString().orEmpty(),
                 password = binding.passwordInput.text?.toString().orEmpty(),
                 confirmPassword = binding.confirmPasswordInput.text?.toString().orEmpty(),
-                acceptedTerms = binding.termsCheckbox.isChecked
+                acceptedTerms = binding.termsCheckbox.isChecked,
+                profileImage = selectedImageUri?.let { uriToByteArray(it) }
             )
             viewModel.submitRegister(dto)
         }
