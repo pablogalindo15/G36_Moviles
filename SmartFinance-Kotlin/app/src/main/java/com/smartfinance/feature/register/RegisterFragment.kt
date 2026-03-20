@@ -201,8 +201,8 @@ class RegisterFragment : Fragment() {
                             binding.progressIndicator.visibility = View.GONE
                             binding.buttonCreateAccount.isEnabled = true
                             findNavController().navigate(
-                                R.id.action_registerFragment_to_onboardingFragment,
-                                bundleOf("userId" to state.data.userId)
+                                R.id.signInFragment,
+                                bundleOf("successMessage" to "User succesfully created")
                             )
                             viewModel.resetUiState()
                         }
