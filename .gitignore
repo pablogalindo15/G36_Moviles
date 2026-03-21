@@ -1,0 +1,5 @@
+.env
+.env.local
+.DS_Store
+ios/FluxoApp/Core/Config/FrontendConfig.plist
+ios/FluxoApp/Fluxo/Fluxo/Core/Config/FrontendConfig.plist
