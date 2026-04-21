@@ -12,7 +12,16 @@ struct RootView: View {
             case .signIn:
                 SignInView(
                     authService: container.authService,
-                    cameraFacade: container.cameraFacade
+                    createAccountDestination: {
+                        AnyView(
+                            CreateAccountView(
+                                authService: container.authService,
+                                cameraFacade: container.cameraFacade
+                            ) { user in
+                                container.router.handleSignedIn(user)
+                            }
+                        )
+                    }
                 ) { user in
                     container.router.handleSignedIn(user)
                 }
@@ -20,7 +29,10 @@ struct RootView: View {
                 if let user = container.router.currentUser {
                     SetupPlanView(
                         user: user,
-                        planService: container.planService
+                        planService: container.planService,
+                        locationService: container.locationService,
+                        locationAdapter: container.locationAdapter,
+                        authAdapter: container.authAdapter
                     ) {
                         Task {
                             await container.router.signOut()

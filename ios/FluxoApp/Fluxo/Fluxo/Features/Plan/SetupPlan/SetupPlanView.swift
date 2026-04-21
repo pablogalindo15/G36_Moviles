@@ -9,12 +9,21 @@ struct SetupPlanView: View {
     init(
         user: AuthenticatedUser,
         planService: PlanApplicationService,
+        locationService: LocationService,
+        locationAdapter: LocationAdapter,
+        authAdapter: AuthAdapter,
         onSignOut: @escaping () -> Void
     ) {
         self.user = user
         self.onSignOut = onSignOut
         _viewModel = StateObject(
-            wrappedValue: SetupPlanViewModel(planService: planService, userId: user.id)
+            wrappedValue: SetupPlanViewModel(
+                planService: planService,
+                locationService: locationService,
+                locationAdapter: locationAdapter,
+                authAdapter: authAdapter,
+                userId: user.id
+            )
         )
     }
 
@@ -26,6 +35,9 @@ struct SetupPlanView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         headerSection
+                        if let warning = viewModel.inflationWarning {
+                            inflationWarningCard(message: warning)
+                        }
                         formSection
                         generateButton
                         if let generatedPlan = viewModel.generatedPlan {
@@ -38,7 +50,7 @@ struct SetupPlanView: View {
                 if viewModel.isLoading || viewModel.isLoadingInitialData {
                     LoadingOverlay(
                         title: viewModel.isLoadingInitialData
-                            ? "Loading your latest plan..."
+                            ? "Fetching your currency..."
                             : "Generating your first plan..."
                     )
                 }
@@ -85,12 +97,30 @@ struct SetupPlanView: View {
         .fluxoCardContainer()
     }
 
+    private func inflationWarningCard(message: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Currency Alert")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.orange)
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(FluxoTheme.secondaryText)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fluxoCardContainer()
+    }
+
     private var formSection: some View {
         VStack(spacing: 14) {
             FluxoInputField(title: "Currency") {
                 TextField("USD / COP / EUR", text: $viewModel.currency)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
+                    .onChange(of: viewModel.currency) { _, new in
+                        if new.count > 3 {
+                            viewModel.currency = String(new.prefix(3))
+                        }
+                    }
             }
 
             FluxoInputField(title: "Monthly income") {
@@ -112,6 +142,7 @@ struct SetupPlanView: View {
                 DatePicker(
                     "Select date",
                     selection: $viewModel.nextPayday,
+                    in: Date()...,
                     displayedComponents: .date
                 )
                 .labelsHidden()

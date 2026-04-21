@@ -251,9 +251,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3RKUJRUQMG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Fluxo uses camera to capture your profile photo.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Fluxo uses your location to set your local currency and show relevant financial insights.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Fluxo uses your photo library when camera is unavailable.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -284,9 +286,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3RKUJRUQMG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Fluxo uses camera to capture your profile photo.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Fluxo uses your location to set your local currency and show relevant financial insights.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Fluxo uses your photo library when camera is unavailable.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

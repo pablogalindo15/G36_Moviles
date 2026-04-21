@@ -8,6 +8,9 @@ final class AppContainer: ObservableObject {
     let authService: AuthApplicationService
     let planService: PlanApplicationService
     let cameraFacade: CameraFacade
+    let locationService: LocationService
+    let locationAdapter: LocationAdapter
+    let authAdapter: AuthAdapter
     let router: AppRouter
 
     private var hasStarted = false
@@ -32,6 +35,7 @@ final class AppContainer: ObservableObject {
         let storageAdapter = StorageAdapter(httpClient: httpClient)
         let planAdapter = PlanAdapter(httpClient: httpClient)
         let functionsAdapter = FunctionsAdapter(httpClient: httpClient)
+        let locationAdapter = LocationAdapter(httpClient: httpClient)
 
         // 3) Construir servicios de aplicación.
         let authService = AuthApplicationService(
@@ -49,6 +53,9 @@ final class AppContainer: ObservableObject {
         self.authService = authService
         self.planService = planService
         self.cameraFacade = CameraFacade()
+        self.locationService = LocationService()
+        self.locationAdapter = locationAdapter
+        self.authAdapter = authAdapter
         self.router = AppRouter(authService: authService)
 
         // RootView observa AppContainer, so we forward router updates.
