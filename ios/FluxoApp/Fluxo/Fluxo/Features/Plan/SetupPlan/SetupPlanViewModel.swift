@@ -10,7 +10,6 @@ final class SetupPlanViewModel: ObservableObject {
     @Published var monthlySavingsGoal = ""
     @Published var nextPayday = Date()
 
-    @Published var generatedPlan: GeneratedPlanDTO?
     @Published var isLoading = false
     @Published var isLoadingInitialData = false
     @Published var errorMessage: String?
@@ -22,6 +21,7 @@ final class SetupPlanViewModel: ObservableObject {
     private let locationAdapter: LocationAdapter
     private let authAdapter: AuthAdapter
     private let userId: String
+    private let onPlanGenerated: () -> Void
 
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -37,13 +37,15 @@ final class SetupPlanViewModel: ObservableObject {
         locationService: LocationService,
         locationAdapter: LocationAdapter,
         authAdapter: AuthAdapter,
-        userId: String
+        userId: String,
+        onPlanGenerated: @escaping () -> Void
     ) {
         self.planService = planService
         self.locationService = locationService
         self.locationAdapter = locationAdapter
         self.authAdapter = authAdapter
         self.userId = userId
+        self.onPlanGenerated = onPlanGenerated
     }
 
     func loadLatestIfNeeded() async {
@@ -59,13 +61,10 @@ final class SetupPlanViewModel: ObservableObject {
         do {
             let snapshot = try await planService.loadLatestSnapshot(userId: userId)
             if let setup = snapshot.setup {
-                // User has saved data — use it, cancel location detection.
+                // User already has a setup — they belong on the dashboard.
                 locationTask.cancel()
                 currency = setup.currency
-                monthlyIncome = Self.moneyString(setup.monthly_income)
-                fixedMonthlyExpenses = Self.moneyString(setup.fixed_monthly_expenses)
-                monthlySavingsGoal = Self.moneyString(setup.monthly_savings_goal)
-                nextPayday = dateFormatter.date(from: setup.next_payday) ?? nextPayday
+                onPlanGenerated()
             } else {
                 // First time — apply location context once it arrives.
                 if let context = await locationTask.value {
@@ -74,7 +73,6 @@ final class SetupPlanViewModel: ObservableObject {
                     inflationWarning = context.inflation_warning
                 }
             }
-            generatedPlan = snapshot.plan
         } catch {
             locationTask.cancel()
             errorMessage = error.localizedDescription
@@ -89,10 +87,8 @@ final class SetupPlanViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            generatedPlan = try await planService.generateFirstPlan(
-                userId: userId,
-                setup: input
-            )
+            _ = try await planService.generateFirstPlan(userId: userId, setup: input)
+            onPlanGenerated()
         } catch {
             errorMessage = error.localizedDescription
         }

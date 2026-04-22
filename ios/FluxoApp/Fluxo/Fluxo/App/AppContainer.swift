@@ -7,9 +7,17 @@ final class AppContainer: ObservableObject {
 
     let authService: AuthApplicationService
     let planService: PlanApplicationService
+    let expensesService: ExpensesApplicationService
+    let comparativeSpendingService: ComparativeSpendingService
+    let topCategoriesService: TopCategoriesService
+    let savingsProjectionService: SavingsProjectionService
+    let localStore: LocalStore
     let cameraFacade: CameraFacade
     let locationService: LocationService
     let locationAdapter: LocationAdapter
+    let keychainAdapter: KeychainAdapter
+    let preferencesAdapter: PreferencesAdapter
+    let expensesFileAdapter: ExpensesFileAdapter
     let authAdapter: AuthAdapter
     let router: AppRouter
 
@@ -30,14 +38,20 @@ final class AppContainer: ObservableObject {
         let httpClient = SupabaseHTTPClient(config: config)
 
         // 2) Construir adapters.
-        let authAdapter = AuthAdapter(httpClient: httpClient)
+        let keychainAdapter = KeychainAdapter()
+        let preferencesAdapter = PreferencesAdapter()
+        let expensesFileAdapter = ExpensesFileAdapter()
+        let authAdapter = AuthAdapter(httpClient: httpClient, keychain: keychainAdapter)
         let profileAdapter = ProfileAdapter(httpClient: httpClient)
         let storageAdapter = StorageAdapter(httpClient: httpClient)
         let planAdapter = PlanAdapter(httpClient: httpClient)
         let functionsAdapter = FunctionsAdapter(httpClient: httpClient)
         let locationAdapter = LocationAdapter(httpClient: httpClient)
+        let expensesAdapter = ExpensesAdapter(httpClient: httpClient)
 
         // 3) Construir servicios de aplicación.
+        let localStore = LocalStore()
+
         let authService = AuthApplicationService(
             authAdapter: authAdapter,
             profileAdapter: profileAdapter,
@@ -46,15 +60,41 @@ final class AppContainer: ObservableObject {
         let planService = PlanApplicationService(
             authAdapter: authAdapter,
             planAdapter: planAdapter,
-            functionsAdapter: functionsAdapter
+            functionsAdapter: functionsAdapter,
+            localStore: localStore
+        )
+        let expensesService = ExpensesApplicationService(
+            expensesAdapter: expensesAdapter,
+            authAdapter: authAdapter,
+            localStore: localStore
+        )
+        let comparativeSpendingService = ComparativeSpendingService(
+            functionsAdapter: functionsAdapter,
+            authAdapter: authAdapter
+        )
+        let topCategoriesService = TopCategoriesService(
+            functionsAdapter: functionsAdapter,
+            authAdapter: authAdapter
+        )
+        let savingsProjectionService = SavingsProjectionService(
+            functionsAdapter: functionsAdapter,
+            authAdapter: authAdapter
         )
 
         self.config = config
         self.authService = authService
         self.planService = planService
+        self.expensesService = expensesService
+        self.comparativeSpendingService = comparativeSpendingService
+        self.topCategoriesService = topCategoriesService
+        self.savingsProjectionService = savingsProjectionService
+        self.localStore = localStore
         self.cameraFacade = CameraFacade()
         self.locationService = LocationService()
         self.locationAdapter = locationAdapter
+        self.keychainAdapter = keychainAdapter
+        self.preferencesAdapter = preferencesAdapter
+        self.expensesFileAdapter = expensesFileAdapter
         self.authAdapter = authAdapter
         self.router = AppRouter(authService: authService)
 
@@ -70,5 +110,14 @@ final class AppContainer: ObservableObject {
         guard !hasStarted else { return }
         hasStarted = true
         await router.bootstrap()
+
+        // PASO 7: if the authenticated user already has a financial setup,
+        // send them directly to the dashboard instead of the setup screen.
+        if router.root == .setupPlan, let user = router.currentUser {
+            if let snapshot = try? await planService.loadLatestSnapshot(userId: user.id),
+               snapshot.setup != nil {
+                router.goToDashboard()
+            }
+        }
     }
 }

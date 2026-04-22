@@ -32,15 +32,34 @@ struct RootView: View {
                         planService: container.planService,
                         locationService: container.locationService,
                         locationAdapter: container.locationAdapter,
-                        authAdapter: container.authAdapter
-                    ) {
-                        Task {
-                            await container.router.signOut()
+                        authAdapter: container.authAdapter,
+                        onPlanGenerated: {
+                            container.router.goToDashboard()
+                        },
+                        onSignOut: {
+                            Task {
+                                await container.router.signOut()
+                            }
                         }
-                    }
+                    )
                 } else {
                     loadingView
                 }
+            case .dashboard:
+                DashboardView(
+                    viewModel: DashboardViewModel(
+                        planService: container.planService,
+                        expensesService: container.expensesService,
+                        comparativeSpendingService: container.comparativeSpendingService,
+                        topCategoriesService: container.topCategoriesService,
+                        savingsProjectionService: container.savingsProjectionService,
+                        preferencesAdapter: container.preferencesAdapter,
+                        expensesFileAdapter: container.expensesFileAdapter,
+                        onSignOut: {
+                            Task { await container.router.signOut() }
+                        }
+                    )
+                )
             }
         }
         .background(FluxoTheme.background.ignoresSafeArea())

@@ -12,6 +12,7 @@ struct SetupPlanView: View {
         locationService: LocationService,
         locationAdapter: LocationAdapter,
         authAdapter: AuthAdapter,
+        onPlanGenerated: @escaping () -> Void,
         onSignOut: @escaping () -> Void
     ) {
         self.user = user
@@ -22,7 +23,8 @@ struct SetupPlanView: View {
                 locationService: locationService,
                 locationAdapter: locationAdapter,
                 authAdapter: authAdapter,
-                userId: user.id
+                userId: user.id,
+                onPlanGenerated: onPlanGenerated
             )
         )
     }
@@ -40,9 +42,6 @@ struct SetupPlanView: View {
                         }
                         formSection
                         generateButton
-                        if let generatedPlan = viewModel.generatedPlan {
-                            resultsSection(plan: generatedPlan)
-                        }
                     }
                     .padding(20)
                 }
@@ -167,59 +166,5 @@ struct SetupPlanView: View {
             .buttonStyle(FluxoPrimaryButtonStyle(isDisabled: viewModel.isLoading))
             .disabled(viewModel.isLoading)
         }
-    }
-
-    private func resultsSection(plan: GeneratedPlanDTO) -> some View {
-        // Direct mapping of backend response fields to UI cards.
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Your plan results")
-                .font(.headline.weight(.bold))
-                .foregroundColor(FluxoTheme.titleText)
-
-            ResultMetricCard(
-                title: "Safe to spend until next payday",
-                value: "\(viewModel.currency.uppercased()) \(money(plan.safe_to_spend_until_next_payday))"
-            )
-            ResultMetricCard(
-                title: "Recommended weekly cap",
-                value: "\(viewModel.currency.uppercased()) \(money(plan.weekly_cap))"
-            )
-            ResultMetricCard(
-                title: "Target savings",
-                value: "\(viewModel.currency.uppercased()) \(money(plan.target_savings))"
-            )
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Contextual insight")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(FluxoTheme.titleText)
-                Text(plan.contextual_insight_message)
-                    .font(.subheadline)
-                    .foregroundColor(FluxoTheme.secondaryText)
-            }
-            .fluxoCardContainer()
-        }
-    }
-
-    private func money(_ value: Double) -> String {
-        String(format: "%.2f", value)
-    }
-}
-
-private struct ResultMetricCard: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(FluxoTheme.secondaryText)
-            Text(value)
-                .font(.title3.weight(.bold))
-                .foregroundColor(FluxoTheme.titleText)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .fluxoCardContainer()
     }
 }
