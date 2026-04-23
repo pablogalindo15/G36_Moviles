@@ -24,23 +24,13 @@ final class ComparativeSpendingService {
     }
 
     func fetchComparativeSpending(weekEnd: Date? = nil) async throws -> ComparativeSpendingResult {
-        // 1. Obtain access token — authAdapter.currentAccessToken() is async throws.
-        let token: String
-        do {
-            token = try await authAdapter.currentAccessToken()
-        } catch {
-            throw ComparativeSpendingServiceError.notAuthenticated
-        }
-
-        // 2. Call the edge function; adapter returns raw Data (polymorphic response).
         let data: Data
         do {
-            data = try await functionsAdapter.getComparativeSpending(weekEnd: weekEnd, accessToken: token)
+            data = try await requestComparativeSpending(weekEnd: weekEnd)
         } catch {
             throw ComparativeSpendingServiceError.underlying(error)
         }
 
-        // 3. Try Schema A: full result (cohort large enough).
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
 
@@ -48,7 +38,6 @@ final class ComparativeSpendingService {
             return .ready(ready)
         }
 
-        // 5. Try Schema B: cohort_too_small.
         struct TooSmallResponse: Decodable {
             let cohort_size: Int
             let reason: String?
@@ -59,12 +48,35 @@ final class ComparativeSpendingService {
             return .cohortTooSmall(cohortSize: tooSmall.cohort_size)
         }
 
-        // 6. Neither schema matched.
         let parseError = NSError(
             domain: "ComparativeSpendingService",
             code: -1,
             userInfo: [NSLocalizedDescriptionKey: "Unexpected response schema"]
         )
         throw ComparativeSpendingServiceError.decodingFailed(parseError)
+    }
+
+    private func requestComparativeSpending(weekEnd: Date?) async throws -> Data {
+        let token: String
+        do {
+            token = try await authAdapter.currentAccessToken()
+        } catch {
+            throw ComparativeSpendingServiceError.notAuthenticated
+        }
+
+        do {
+            return try await functionsAdapter.getComparativeSpending(
+                weekEnd: weekEnd,
+                accessToken: token
+            )
+        } catch let error as FunctionsAdapterError {
+            guard case .backend(let statusCode, _, _) = error, statusCode == 401 else {
+                throw error
+            }
+            return try await functionsAdapter.getComparativeSpending(
+                weekEnd: weekEnd,
+                accessToken: try await authAdapter.refreshSession()
+            )
+        }
     }
 }

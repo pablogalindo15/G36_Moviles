@@ -8,7 +8,11 @@ final class LocalStore {
 
     init() {
         do {
-            container = try ModelContainer(for: LocalExpense.self, LocalPlan.self)
+            container = try ModelContainer(
+                for: LocalExpense.self,
+                LocalPlan.self,
+                LocalFinancialSetup.self
+            )
         } catch {
             fatalError("Failed to initialize SwiftData ModelContainer: \(error)")
         }
@@ -51,9 +55,40 @@ final class LocalStore {
 
     // MARK: - Plan
 
+    func saveSetup(_ setup: FinancialSetupRow) {
+        let id = setup.id
+        let predicate = #Predicate<LocalFinancialSetup> { $0.id == id }
+        let descriptor = FetchDescriptor<LocalFinancialSetup>(predicate: predicate)
+
+        if let existing = try? context.fetch(descriptor).first {
+            existing.userId = setup.user_id
+            existing.currency = setup.currency
+            existing.monthlyIncome = Decimal(setup.monthly_income)
+            existing.fixedMonthlyExpenses = Decimal(setup.fixed_monthly_expenses)
+            existing.monthlySavingsGoal = Decimal(setup.monthly_savings_goal)
+            existing.nextPayday = setup.next_payday
+            existing.createdAt = setup.created_at
+            existing.updatedAt = setup.updated_at
+        } else {
+            context.insert(LocalFinancialSetup(from: setup))
+        }
+
+        try? context.save()
+    }
+
+    func fetchLatestSetup(userId: String) -> FinancialSetupRow? {
+        let normalized = userId.lowercased()
+        let predicate = #Predicate<LocalFinancialSetup> { $0.userId == normalized }
+        var descriptor = FetchDescriptor<LocalFinancialSetup>(predicate: predicate)
+        descriptor.sortBy = [SortDescriptor(\.updatedAt, order: .reverse)]
+        descriptor.fetchLimit = 1
+
+        return (try? context.fetch(descriptor))?.first?.toDTO()
+    }
+
     func savePlan(_ plan: GeneratedPlanDTO) {
         // Replace strategy: delete all existing plans for this user, insert the new one.
-        let userId = plan.user_id
+        let userId = plan.user_id.lowercased()
         let predicate = #Predicate<LocalPlan> { $0.userId == userId }
         let descriptor = FetchDescriptor<LocalPlan>(predicate: predicate)
 
@@ -66,7 +101,8 @@ final class LocalStore {
     }
 
     func fetchLatestPlan(userId: String) -> GeneratedPlanDTO? {
-        let predicate = #Predicate<LocalPlan> { $0.userId == userId }
+        let normalized = userId.lowercased()
+        let predicate = #Predicate<LocalPlan> { $0.userId == normalized }
         var descriptor = FetchDescriptor<LocalPlan>(predicate: predicate)
         descriptor.sortBy = [SortDescriptor(\.generatedAt, order: .reverse)]
         descriptor.fetchLimit = 1
@@ -82,6 +118,9 @@ final class LocalStore {
         }
         if let plans = try? context.fetch(FetchDescriptor<LocalPlan>()) {
             for p in plans { context.delete(p) }
+        }
+        if let setups = try? context.fetch(FetchDescriptor<LocalFinancialSetup>()) {
+            for s in setups { context.delete(s) }
         }
         try? context.save()
     }

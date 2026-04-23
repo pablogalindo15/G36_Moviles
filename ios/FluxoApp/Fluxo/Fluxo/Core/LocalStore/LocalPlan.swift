@@ -37,7 +37,7 @@ final class LocalPlan {
     convenience init(from dto: GeneratedPlanDTO) {
         self.init(
             id: dto.id,
-            userId: dto.user_id,
+            userId: dto.user_id.lowercased(),
             financialSetupId: dto.financial_setup_id,
             safeToSpendUntilNextPayday: Decimal(dto.safe_to_spend_until_next_payday),
             weeklyCap: Decimal(dto.weekly_cap),

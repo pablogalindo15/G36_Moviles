@@ -113,6 +113,9 @@ final class AuthAdapter {
             let user = try JSONDecoder().decode(AuthUserResponse.self, from: data)
             return AuthenticatedUser(id: user.id, email: user.email)
         } catch {
+            if ConnectivitySupport.isConnectivityIssue(error) {
+                return cachedAuthenticatedUser(from: token)
+            }
             sessionStore.clear()
             return nil
         }
@@ -221,6 +224,41 @@ final class AuthAdapter {
     private func isLikelyJWT(_ token: String) -> Bool {
         let pieces = token.split(separator: ".")
         return pieces.count == 3 && token.count > 20
+    }
+
+    private func cachedAuthenticatedUser(from token: String) -> AuthenticatedUser? {
+        guard
+            let payload = decodedJWTPayload(token),
+            let sub = payload["sub"] as? String
+        else {
+            return nil
+        }
+
+        let normalizedUserId = UUID(uuidString: sub)?.uuidString.lowercased() ?? sub.lowercased()
+        return AuthenticatedUser(
+            id: normalizedUserId,
+            email: payload["email"] as? String
+        )
+    }
+
+    private func decodedJWTPayload(_ token: String) -> [String: Any]? {
+        let parts = token.split(separator: ".")
+        guard parts.count == 3 else { return nil }
+
+        var base64 = String(parts[1])
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let remainder = base64.count % 4
+        if remainder > 0 { base64 += String(repeating: "=", count: 4 - remainder) }
+
+        guard
+            let data = Data(base64Encoded: base64),
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return nil
+        }
+
+        return json
     }
 
     private func normalizeAccessToken(_ raw: String) -> String {

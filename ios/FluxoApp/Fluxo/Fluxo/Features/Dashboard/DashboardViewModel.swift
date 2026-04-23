@@ -10,6 +10,7 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var currency: String = "USD"
     @Published private(set) var isLoadingPlan: Bool = false
     @Published private(set) var loadError: String?
+    @Published private(set) var connectivityMessage: String?
     @Published private(set) var expenseSummary: ExpenseSummary?
     @Published private(set) var comparativeSpending: ComparativeSpendingResult?
     @Published private(set) var isLoadingComparative: Bool = false
@@ -23,10 +24,10 @@ final class DashboardViewModel: ObservableObject {
 
     @Published var showLogExpense: Bool = false
     @Published private(set) var lastSyncAt: Date?
-    @Published private(set) var lastExportDate: Date? = nil
+    @Published private(set) var lastExportDate: Date?
     @Published private(set) var exportInProgress: Bool = false
-    @Published private(set) var exportError: String? = nil
-    @Published private(set) var exportSuccessURL: URL? = nil
+    @Published private(set) var exportError: String?
+    @Published private(set) var exportSuccessURL: URL?
 
     /// Cached from the last successful load; used when refreshing the summary
     /// after a new expense is created without re-fetching the full plan.
@@ -63,34 +64,50 @@ final class DashboardViewModel: ObservableObject {
         self.preferencesAdapter = preferencesAdapter
         self.expensesFileAdapter = expensesFileAdapter
         self.onSignOut = onSignOut
+        self.currency = preferencesAdapter.getLastSeenCurrency() ?? "USD"
         self.lastSyncAt = preferencesAdapter.getLastSyncAt()
         self.lastExportDate = expensesFileAdapter.lastExportDate()
     }
 
     // MARK: - Public API
 
-    func load() async {
+    func load(forceRefresh: Bool = false) async {
         isLoadingPlan = true
         loadError = nil
+        connectivityMessage = nil
         do {
-            let snapshot = try await planService.fetchLatestSnapshot()
+            let snapshot = try await planService.fetchLatestSnapshot(forceRefresh: forceRefresh)
             if let setup = snapshot.setup {
                 currency = setup.currency
                 cachedNextPayday = Self.parseSetupDate(setup.next_payday)
+                preferencesAdapter.setLastSeenCurrency(setup.currency)
             }
             plan = snapshot.plan
-            // TODO (Fase 4): paralelizar con TaskGroup las 4 cargas (plan, summary, comparative, topCategories).
-            if let nextPayday = cachedNextPayday {
-                await loadExpenseSummary(nextPayday: nextPayday, currency: currency)
+            if snapshot.source == .localCache {
+                connectivityMessage = ConnectivitySupport.cachedContentMessage()
             }
-            await loadComparativeSpending()
-            await loadTopCategories()
-            await loadSavingsProjection()
-            let now = Date()
-            lastSyncAt = now
-            preferencesAdapter.setLastSyncAt(now)
+            var dashboardLoadedSuccessfully = true
+            if let nextPayday = cachedNextPayday {
+                dashboardLoadedSuccessfully = await loadExpenseSummary(
+                    nextPayday: nextPayday,
+                    currency: currency
+                ) && dashboardLoadedSuccessfully
+            }
+            dashboardLoadedSuccessfully = await loadComparativeSpending() && dashboardLoadedSuccessfully
+            dashboardLoadedSuccessfully = await loadTopCategories() && dashboardLoadedSuccessfully
+            dashboardLoadedSuccessfully = await loadSavingsProjection() && dashboardLoadedSuccessfully
+
+            if snapshot.source != .localCache, dashboardLoadedSuccessfully {
+                let now = Date()
+                lastSyncAt = now
+                preferencesAdapter.setLastSyncAt(now)
+            }
         } catch {
-            loadError = "Couldn't load your plan. Pull down to retry."
+            if ConnectivitySupport.isConnectivityIssue(error) {
+                loadError = ConnectivitySupport.noSavedContentMessage(for: "plan data")
+            } else {
+                loadError = "Couldn't load your plan. Pull down to retry."
+            }
         }
         isLoadingPlan = false
     }
@@ -99,29 +116,17 @@ final class DashboardViewModel: ObservableObject {
         showLogExpense = true
     }
 
-    func handleExpenseCreated(_ expense: Expense) {
+    func handleExpenseCreated(_: Expense) {
         showLogExpense = false
         // Refresh spending summary, comparative insight, and top categories after a new expense.
         if let nextPayday = cachedNextPayday {
             Task {
-                await loadExpenseSummary(nextPayday: nextPayday, currency: currency)
-                await loadComparativeSpending()
-                await loadTopCategories()
-                await loadSavingsProjection()
+                _ = await loadExpenseSummary(nextPayday: nextPayday, currency: currency)
+                _ = await loadComparativeSpending()
+                _ = await loadTopCategories()
+                _ = await loadSavingsProjection()
             }
         }
-    }
-
-    func makeLogExpenseViewModel() -> LogExpenseViewModel {
-        LogExpenseViewModel(
-            currency: currency,
-            service: expensesService,
-            onExpenseCreated: { [weak self] expense in
-                Task { @MainActor in
-                    self?.handleExpenseCreated(expense)
-                }
-            }
-        )
     }
 
     func signOut() {
@@ -137,6 +142,14 @@ final class DashboardViewModel: ObservableObject {
         let expenses: [Expense]
         do {
             expenses = try await expensesService.fetchMyExpenses()
+        } catch let serviceError as ExpensesServiceError {
+            switch serviceError {
+            case .underlying(let error) where ConnectivitySupport.isConnectivityIssue(error):
+                exportError = ConnectivitySupport.noSavedContentMessage(for: "expenses")
+            default:
+                exportError = "Couldn't fetch expenses to export."
+            }
+            return
         } catch {
             exportError = "Couldn't fetch expenses to export."
             return
@@ -198,53 +211,74 @@ final class DashboardViewModel: ObservableObject {
 
     // MARK: - Private
 
-    private func loadExpenseSummary(nextPayday: Date, currency: String) async {
+    private func loadExpenseSummary(nextPayday: Date, currency: String) async -> Bool {
+        let previousSummary = expenseSummary
         do {
             expenseSummary = try await expensesService.fetchExpenseSummary(
                 nextPayday: nextPayday,
                 currency: currency
             )
+            return true
         } catch {
             // Don't block plan overview on a summary error.
-            // Fase 5: replace with SwiftData local fallback.
-            expenseSummary = nil
+            expenseSummary = previousSummary
+            return false
         }
     }
 
-    private func loadComparativeSpending() async {
+    private func loadComparativeSpending() async -> Bool {
         isLoadingComparative = true
+        let previousResult = comparativeSpending
         comparativeError = nil
         do {
             comparativeSpending = try await comparativeSpendingService.fetchComparativeSpending()
+            isLoadingComparative = false
+            return true
         } catch {
-            comparativeError = "Couldn't load comparative insight."
-            comparativeSpending = nil
+            comparativeSpending = previousResult
+            comparativeError = previousResult == nil ? insightErrorMessage(for: error) : nil
+            isLoadingComparative = false
+            return false
         }
-        isLoadingComparative = false
     }
 
-    private func loadTopCategories() async {
+    private func loadTopCategories() async -> Bool {
         isLoadingTopCategories = true
+        let previousResult = topCategories
         topCategoriesError = nil
         do {
             topCategories = try await topCategoriesService.fetchTopCategories()
+            isLoadingTopCategories = false
+            return true
         } catch {
-            topCategoriesError = "Couldn't load top categories."
-            topCategories = nil
+            topCategories = previousResult
+            topCategoriesError = previousResult == nil ? insightErrorMessage(for: error) : nil
+            isLoadingTopCategories = false
+            return false
         }
-        isLoadingTopCategories = false
     }
 
-    private func loadSavingsProjection() async {
+    private func loadSavingsProjection() async -> Bool {
         isLoadingSavingsProjection = true
+        let previousResult = savingsProjection
         savingsProjectionError = nil
         do {
             savingsProjection = try await savingsProjectionService.fetchSavingsProjection()
+            isLoadingSavingsProjection = false
+            return true
         } catch {
-            savingsProjectionError = "Couldn't load savings projection."
-            savingsProjection = nil
+            savingsProjection = previousResult
+            savingsProjectionError = previousResult == nil ? insightErrorMessage(for: error) : nil
+            isLoadingSavingsProjection = false
+            return false
         }
-        isLoadingSavingsProjection = false
+    }
+
+    private func insightErrorMessage(for error: Error) -> String {
+        if ConnectivitySupport.isConnectivityIssue(error) {
+            return ConnectivitySupport.requiresInternetMessage(for: "This insight")
+        }
+        return "This insight couldn't be loaded right now."
     }
 
     /// Parses the "yyyy-MM-dd" UTC string stored in FinancialSetupRow.next_payday.

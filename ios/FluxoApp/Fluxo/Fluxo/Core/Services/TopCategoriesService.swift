@@ -24,26 +24,19 @@ final class TopCategoriesService {
     }
 
     func fetchTopCategories() async throws -> TopCategoriesResult {
-        // authAdapter.currentAccessToken() is async throws.
-        guard let token = try? await authAdapter.currentAccessToken() else {
-            throw TopCategoriesServiceError.notAuthenticated
-        }
-
         let data: Data
         do {
-            data = try await functionsAdapter.getTopCategories(accessToken: token)
+            data = try await requestTopCategories()
         } catch {
             throw TopCategoriesServiceError.underlying(error)
         }
 
         let decoder = JSONDecoder()
 
-        // Schema A: full result.
         if let payload = try? decoder.decode(TopCategoriesPayload.self, from: data) {
             return .ready(payload)
         }
 
-        // Schema B: insufficient data.
         struct InsufficientResponse: Decodable {
             let total_expenses: Int
             let reason: String?
@@ -59,5 +52,22 @@ final class TopCategoriesService {
             userInfo: [NSLocalizedDescriptionKey: "Unexpected response schema"]
         )
         throw TopCategoriesServiceError.decodingFailed(err)
+    }
+
+    private func requestTopCategories() async throws -> Data {
+        guard let token = try? await authAdapter.currentAccessToken() else {
+            throw TopCategoriesServiceError.notAuthenticated
+        }
+
+        do {
+            return try await functionsAdapter.getTopCategories(accessToken: token)
+        } catch let error as FunctionsAdapterError {
+            guard case .backend(let statusCode, _, _) = error, statusCode == 401 else {
+                throw error
+            }
+            return try await functionsAdapter.getTopCategories(
+                accessToken: try await authAdapter.refreshSession()
+            )
+        }
     }
 }

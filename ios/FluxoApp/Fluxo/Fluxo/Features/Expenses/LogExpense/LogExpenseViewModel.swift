@@ -15,20 +15,24 @@ final class LogExpenseViewModel: ObservableObject {
     @Published var note: String = ""
     @Published var occurredAt: Date = Date()
     @Published var submitState: LogExpenseSubmitState = .idle
-    @Published var validationError: String? = nil
+    @Published var infoMessage: String? = nil
 
     let currency: String
     private let service: ExpensesApplicationService
+    private let preferencesAdapter: PreferencesAdapter
     private let onExpenseCreated: (Expense) -> Void
 
     init(
         currency: String,
         service: ExpensesApplicationService,
+        preferencesAdapter: PreferencesAdapter,
         onExpenseCreated: @escaping (Expense) -> Void
     ) {
         self.currency = currency
         self.service = service
+        self.preferencesAdapter = preferencesAdapter
         self.onExpenseCreated = onExpenseCreated
+        restoreDraftIfNeeded()
     }
 
     var isSubmitEnabled: Bool {
@@ -41,7 +45,7 @@ final class LogExpenseViewModel: ObservableObject {
 
     func submit() async {
         submitState = .submitting
-        validationError = nil
+        infoMessage = nil
 
         guard let amount = Decimal(string: amountText, locale: .current) else {
             submitState = .failure("Invalid amount")
@@ -56,6 +60,8 @@ final class LogExpenseViewModel: ObservableObject {
                 note: note.isEmpty ? nil : note,
                 occurredAt: occurredAt
             )
+            preferencesAdapter.setLastSeenCurrency(currency)
+            preferencesAdapter.clearExpenseDraft()
             submitState = .success(expense)
             onExpenseCreated(expense)
         } catch let svcErr as ExpensesServiceError {
@@ -68,12 +74,33 @@ final class LogExpenseViewModel: ObservableObject {
             case .tooOldDate:          message = "Date too old (max 7 days ago)"
             case .notAuthenticated:    message = "Your session expired, please sign in again"
             case .duplicateExpense:    message = "This expense was already registered"
-            case .underlying(let e):   message = e.localizedDescription
+            case .underlying(let e):
+                if ConnectivitySupport.isConnectivityIssue(e) {
+                    persistDraft()
+                    message = ConnectivitySupport.draftPreservedMessage(for: "save this expense")
+                } else {
+                    message = e.localizedDescription
+                }
             }
             submitState = .failure(message)
         } catch {
-            submitState = .failure("Something went wrong. Please try again.")
+            if ConnectivitySupport.isConnectivityIssue(error) {
+                persistDraft()
+                submitState = .failure(ConnectivitySupport.draftPreservedMessage(for: "save this expense"))
+            } else {
+                submitState = .failure("Something went wrong. Please try again.")
+            }
         }
+    }
+
+    func persistDraft() {
+        let draft = ExpenseDraft(
+            amountText: amountText,
+            selectedCategoryRaw: selectedCategory.rawValue,
+            note: note,
+            occurredAtTimeInterval: occurredAt.timeIntervalSince1970
+        )
+        preferencesAdapter.setExpenseDraft(draft)
     }
 
     func reset() {
@@ -82,6 +109,16 @@ final class LogExpenseViewModel: ObservableObject {
         note = ""
         occurredAt = Date()
         submitState = .idle
-        validationError = nil
+        infoMessage = nil
+        preferencesAdapter.clearExpenseDraft()
+    }
+
+    private func restoreDraftIfNeeded() {
+        guard let draft = preferencesAdapter.getExpenseDraft() else { return }
+        amountText = draft.amountText
+        selectedCategory = draft.selectedCategory
+        note = draft.note
+        occurredAt = draft.occurredAt
+        infoMessage = "Recovered your saved expense draft. Review it and try again."
     }
 }

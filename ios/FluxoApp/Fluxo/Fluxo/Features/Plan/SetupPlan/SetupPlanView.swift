@@ -12,6 +12,7 @@ struct SetupPlanView: View {
         locationService: LocationService,
         locationAdapter: LocationAdapter,
         authAdapter: AuthAdapter,
+        preferencesAdapter: PreferencesAdapter,
         onPlanGenerated: @escaping () -> Void,
         onSignOut: @escaping () -> Void
     ) {
@@ -23,6 +24,7 @@ struct SetupPlanView: View {
                 locationService: locationService,
                 locationAdapter: locationAdapter,
                 authAdapter: authAdapter,
+                preferencesAdapter: preferencesAdapter,
                 userId: user.id,
                 onPlanGenerated: onPlanGenerated
             )
@@ -37,8 +39,11 @@ struct SetupPlanView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         headerSection
+                        if let message = viewModel.contextMessage {
+                            supportCard(title: "Manual fallback", message: message, accentColor: FluxoTheme.primary)
+                        }
                         if let warning = viewModel.inflationWarning {
-                            inflationWarningCard(message: warning)
+                            supportCard(title: "Currency alert", message: warning, accentColor: .orange)
                         }
                         formSection
                         generateButton
@@ -56,6 +61,18 @@ struct SetupPlanView: View {
             }
             .task {
                 await viewModel.loadLatestIfNeeded()
+            }
+            .onChange(of: viewModel.monthlyIncome) { _, _ in
+                viewModel.persistDraft()
+            }
+            .onChange(of: viewModel.fixedMonthlyExpenses) { _, _ in
+                viewModel.persistDraft()
+            }
+            .onChange(of: viewModel.monthlySavingsGoal) { _, _ in
+                viewModel.persistDraft()
+            }
+            .onChange(of: viewModel.nextPayday) { _, _ in
+                viewModel.persistDraft()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -96,11 +113,11 @@ struct SetupPlanView: View {
         .fluxoCardContainer()
     }
 
-    private func inflationWarningCard(message: String) -> some View {
+    private func supportCard(title: String, message: String, accentColor: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Currency Alert")
+            Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(.orange)
+                .foregroundColor(accentColor)
             Text(message)
                 .font(.subheadline)
                 .foregroundColor(FluxoTheme.secondaryText)
@@ -118,7 +135,9 @@ struct SetupPlanView: View {
                     .onChange(of: viewModel.currency) { _, new in
                         if new.count > 3 {
                             viewModel.currency = String(new.prefix(3))
+                            return
                         }
+                        viewModel.persistDraft()
                     }
             }
 

@@ -9,106 +9,83 @@ final class FunctionsAdapter {
 
     func getComparativeSpending(weekEnd: Date?, accessToken: String) async throws -> Data {
         let body = ComparativeSpendingRequestBody(week_end: weekEnd.map { Self.iso8601.string(from: $0) })
-        let (data, response) = try await httpClient.requestJSON(
+        return try await requestData(
             path: "/functions/v1/get-bq-comparative-spending",
-            method: "POST",
             body: body,
-            authToken: accessToken
+            accessToken: accessToken
         )
-        guard (200...299).contains(response.statusCode) else {
-            let backendError = try? JSONDecoder().decode(FunctionErrorPayload.self, from: data)
-            let rawBody = String(data: data, encoding: .utf8)
-            let message = backendError?.error
-                ?? backendError?.message
-                ?? rawBody
-                ?? "Unknown backend error"
-            throw FunctionsAdapterError.backend(
-                statusCode: response.statusCode,
-                message: message,
-                details: backendError?.details
-            )
-        }
-        return data
     }
 
     func getTopCategories(accessToken: String) async throws -> Data {
-        // No request body — the edge function aggregates the last 30 days unconditionally.
-        let (data, response) = try await httpClient.requestJSON(
+        return try await requestData(
             path: "/functions/v1/get-bq-top-categories",
-            method: "POST",
-            authToken: accessToken
+            accessToken: accessToken
         )
-        guard (200...299).contains(response.statusCode) else {
-            let backendError = try? JSONDecoder().decode(FunctionErrorPayload.self, from: data)
-            let rawBody = String(data: data, encoding: .utf8)
-            let message = backendError?.error
-                ?? backendError?.message
-                ?? rawBody
-                ?? "Unknown backend error"
-            throw FunctionsAdapterError.backend(
-                statusCode: response.statusCode,
-                message: message,
-                details: backendError?.details
-            )
-        }
-        return data
     }
 
     func getSavingsProjection(currentDate: Date?, accessToken: String) async throws -> Data {
         let body = SavingsProjectionRequestBody(current_date: currentDate.map { Self.iso8601.string(from: $0) })
-        let (data, response) = try await httpClient.requestJSON(
+        return try await requestData(
             path: "/functions/v1/get-bq-savings-projection",
-            method: "POST",
             body: body,
-            authToken: accessToken
+            accessToken: accessToken
         )
-        guard (200...299).contains(response.statusCode) else {
-            let backendError = try? JSONDecoder().decode(FunctionErrorPayload.self, from: data)
-            let rawBody = String(data: data, encoding: .utf8)
-            let message = backendError?.error
-                ?? backendError?.message
-                ?? rawBody
-                ?? "Unknown backend error"
-            throw FunctionsAdapterError.backend(
-                statusCode: response.statusCode,
-                message: message,
-                details: backendError?.details
-            )
-        }
-        return data
     }
 
     func generateFirstPlan(
         request: GenerateFirstPlanRequestDTO,
         accessToken: String
     ) async throws -> GenerateFirstPlanResponseDTO {
-        let (data, response) = try await httpClient.requestJSON(
+        let data = try await requestData(
             path: "/functions/v1/generate-first-plan",
-            method: "POST",
             body: request,
-            authToken: accessToken
+            accessToken: accessToken
         )
-
-        guard (200...299).contains(response.statusCode) else {
-            let backendError = try? JSONDecoder().decode(FunctionErrorPayload.self, from: data)
-            let rawBody = String(data: data, encoding: .utf8)
-            let message = backendError?.error
-                ?? backendError?.message
-                ?? rawBody
-                ?? "Unknown backend error"
-            throw FunctionsAdapterError.backend(
-                statusCode: response.statusCode,
-                message: message,
-                details: backendError?.details
-            )
-        }
-
         return try JSONDecoder().decode(GenerateFirstPlanResponseDTO.self, from: data)
     }
 }
 
-// ISO8601 formatter shared across all edge-function requests.
 private extension FunctionsAdapter {
+    func requestData(path: String, accessToken: String) async throws -> Data {
+        let (data, response) = try await httpClient.requestJSON(
+            path: path,
+            method: "POST",
+            authToken: accessToken
+        )
+        return try validatedData(data, response: response)
+    }
+
+    func requestData<Body: Encodable>(
+        path: String,
+        body: Body,
+        accessToken: String
+    ) async throws -> Data {
+        let (data, response) = try await httpClient.requestJSON(
+            path: path,
+            method: "POST",
+            body: body,
+            authToken: accessToken
+        )
+        return try validatedData(data, response: response)
+    }
+
+    func validatedData(_ data: Data, response: HTTPURLResponse) throws -> Data {
+        guard (200...299).contains(response.statusCode) else {
+            throw backendError(from: data, statusCode: response.statusCode)
+        }
+        return data
+    }
+
+    func backendError(from data: Data, statusCode: Int) -> FunctionsAdapterError {
+        let payload = try? JSONDecoder().decode(FunctionErrorPayload.self, from: data)
+        let rawBody = String(data: data, encoding: .utf8)
+        return .backend(
+            statusCode: statusCode,
+            message: payload?.error ?? payload?.message ?? rawBody ?? "Unknown backend error",
+            details: payload?.details
+        )
+    }
+
     static let iso8601: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]

@@ -24,29 +24,19 @@ final class SavingsProjectionService {
     }
 
     func fetchSavingsProjection(currentDate: Date? = nil) async throws -> SavingsProjectionResult {
-        // authAdapter.currentAccessToken() is async throws.
-        let token: String
-        do {
-            token = try await authAdapter.currentAccessToken()
-        } catch {
-            throw SavingsProjectionServiceError.notAuthenticated
-        }
-
         let data: Data
         do {
-            data = try await functionsAdapter.getSavingsProjection(currentDate: currentDate, accessToken: token)
+            data = try await requestSavingsProjection(currentDate: currentDate)
         } catch {
             throw SavingsProjectionServiceError.underlying(error)
         }
 
         let decoder = JSONDecoder()
 
-        // Schema A: full result.
         if let projection = try? decoder.decode(SavingsProjection.self, from: data) {
             return .ready(projection)
         }
 
-        // Schema B: insufficient data.
         struct InsufficientResponse: Decodable {
             let insufficient_data: Bool
             let expenses_count_basis: Int
@@ -63,5 +53,29 @@ final class SavingsProjectionService {
             userInfo: [NSLocalizedDescriptionKey: "Unexpected response schema"]
         )
         throw SavingsProjectionServiceError.decodingFailed(err)
+    }
+
+    private func requestSavingsProjection(currentDate: Date?) async throws -> Data {
+        let token: String
+        do {
+            token = try await authAdapter.currentAccessToken()
+        } catch {
+            throw SavingsProjectionServiceError.notAuthenticated
+        }
+
+        do {
+            return try await functionsAdapter.getSavingsProjection(
+                currentDate: currentDate,
+                accessToken: token
+            )
+        } catch let error as FunctionsAdapterError {
+            guard case .backend(let statusCode, _, _) = error, statusCode == 401 else {
+                throw error
+            }
+            return try await functionsAdapter.getSavingsProjection(
+                currentDate: currentDate,
+                accessToken: try await authAdapter.refreshSession()
+            )
+        }
     }
 }

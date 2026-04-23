@@ -15,13 +15,16 @@ final class SetupPlanViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var hasLoadedInitialData = false
     @Published var inflationWarning: String?
+    @Published var contextMessage: String?
 
     private let planService: PlanApplicationService
     private let locationService: LocationService
     private let locationAdapter: LocationAdapter
     private let authAdapter: AuthAdapter
+    private let preferencesAdapter: PreferencesAdapter
     private let userId: String
     private let onPlanGenerated: () -> Void
+    private var restoredDraft = false
 
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -37,6 +40,7 @@ final class SetupPlanViewModel: ObservableObject {
         locationService: LocationService,
         locationAdapter: LocationAdapter,
         authAdapter: AuthAdapter,
+        preferencesAdapter: PreferencesAdapter,
         userId: String,
         onPlanGenerated: @escaping () -> Void
     ) {
@@ -44,6 +48,7 @@ final class SetupPlanViewModel: ObservableObject {
         self.locationService = locationService
         self.locationAdapter = locationAdapter
         self.authAdapter = authAdapter
+        self.preferencesAdapter = preferencesAdapter
         self.userId = userId
         self.onPlanGenerated = onPlanGenerated
     }
@@ -51,31 +56,48 @@ final class SetupPlanViewModel: ObservableObject {
     func loadLatestIfNeeded() async {
         guard !hasLoadedInitialData else { return }
         hasLoadedInitialData = true
+        restoreDraftIfNeeded()
+        if let pendingNotice = preferencesAdapter.consumePendingUserNotice() {
+            appendContextMessage(pendingNotice)
+        }
         isLoadingInitialData = true
         defer { isLoadingInitialData = false }
 
-        // Start location detection immediately in parallel with the DB call
-        // so the permission dialog appears early and GPS warms up.
         let locationTask = Task { await fetchLocationContext() }
 
         do {
             let snapshot = try await planService.loadLatestSnapshot(userId: userId)
             if let setup = snapshot.setup {
-                // User already has a setup — they belong on the dashboard.
                 locationTask.cancel()
                 currency = setup.currency
+                preferencesAdapter.setLastSeenCurrency(setup.currency)
+                preferencesAdapter.clearSetupPlanDraft()
+                onPlanGenerated()
+            } else if snapshot.plan != nil {
+                locationTask.cancel()
+                preferencesAdapter.clearSetupPlanDraft()
                 onPlanGenerated()
             } else {
-                // First time — apply location context once it arrives.
                 if let context = await locationTask.value {
-                    print("[LOC] Applying: currency=\(context.currency) warning=\(context.inflation_warning ?? "none")")
-                    currency = context.currency
+                    if !restoredDraft {
+                        currency = context.currency
+                    }
                     inflationWarning = context.inflation_warning
+                } else if !restoredDraft {
+                    contextMessage = "We couldn't detect your local context right now. You can continue by entering your currency manually."
                 }
             }
         } catch {
             locationTask.cancel()
-            errorMessage = error.localizedDescription
+            if ConnectivitySupport.isConnectivityIssue(error) {
+                if restoredDraft {
+                    contextMessage = "You're offline. Keep editing your saved setup draft and generate the plan when connection is back."
+                } else {
+                    contextMessage = "You're offline. You can still fill the form and enter your currency manually. We'll keep your draft on this device."
+                }
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -88,26 +110,55 @@ final class SetupPlanViewModel: ObservableObject {
 
         do {
             _ = try await planService.generateFirstPlan(userId: userId, setup: input)
+            preferencesAdapter.setLastSeenCurrency(input.currency)
+            preferencesAdapter.clearSetupPlanDraft()
             onPlanGenerated()
         } catch {
-            errorMessage = error.localizedDescription
+            persistDraft()
+            if ConnectivitySupport.isConnectivityIssue(error) {
+                errorMessage = ConnectivitySupport.draftPreservedMessage(for: "generate your plan")
+            } else {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func persistDraft() {
+        let draft = SetupPlanDraft(
+            currency: currency,
+            monthlyIncome: monthlyIncome,
+            fixedMonthlyExpenses: fixedMonthlyExpenses,
+            monthlySavingsGoal: monthlySavingsGoal,
+            nextPaydayTimeInterval: nextPayday.timeIntervalSince1970
+        )
+        preferencesAdapter.setSetupPlanDraft(draft)
+    }
+
+    private func restoreDraftIfNeeded() {
+        guard let draft = preferencesAdapter.getSetupPlanDraft() else { return }
+        restoredDraft = true
+        currency = draft.currency
+        monthlyIncome = draft.monthlyIncome
+        fixedMonthlyExpenses = draft.fixedMonthlyExpenses
+        monthlySavingsGoal = draft.monthlySavingsGoal
+        nextPayday = draft.nextPayday
+        appendContextMessage("Recovered your saved setup draft from this device.")
+    }
+
+    private func appendContextMessage(_ message: String) {
+        guard !message.isEmpty else { return }
+        if let current = contextMessage, !current.isEmpty {
+            contextMessage = "\(current)\n\n\(message)"
+        } else {
+            contextMessage = message
         }
     }
 
     private func fetchLocationContext() async -> LocationContextDTO? {
-        guard let location = await locationService.requestLocation() else {
-            print("[LOC] requestLocation returned nil")
-            return nil
-        }
-        print("[LOC] Got location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
-
-        guard let token = try? await authAdapter.currentAccessToken() else {
-            print("[LOC] No access token")
-            return nil
-        }
+        guard let location = await locationService.requestLocation() else { return nil }
+        guard let token = try? await authAdapter.currentAccessToken() else { return nil }
 
         let countryCode = await locationService.resolveCountryCode(for: location)
-        print("[LOC] Country code: \(countryCode ?? "nil")")
 
         return try? await locationAdapter.detectLocationContext(
             latitude: location.coordinate.latitude,
@@ -158,9 +209,5 @@ final class SetupPlanViewModel: ObservableObject {
             monthly_savings_goal: savings,
             next_payday: dateFormatter.string(from: nextPayday)
         )
-    }
-
-    private static func moneyString(_ value: Double) -> String {
-        String(format: "%.2f", value)
     }
 }

@@ -18,6 +18,9 @@ struct DashboardView: View {
                                 .foregroundColor(FluxoTheme.secondaryText)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                         }
+                        if let message = viewModel.connectivityMessage {
+                            connectivityNotice(message: message)
+                        }
                         planOverviewSection
                         spendingSection
                         insightsSection
@@ -27,7 +30,7 @@ struct DashboardView: View {
                     .padding(.vertical, 16)
                 }
                 .refreshable {
-                    await viewModel.load()
+                    await viewModel.load(forceRefresh: true)
                 }
                 .background(FluxoTheme.background.ignoresSafeArea())
 
@@ -47,6 +50,7 @@ struct DashboardView: View {
                 LogExpenseView(
                     currency: viewModel.currency,
                     service: viewModel.expensesService,
+                    preferencesAdapter: viewModel.preferencesAdapter,
                     onExpenseCreated: { expense in
                         viewModel.handleExpenseCreated(expense)
                     }
@@ -55,7 +59,15 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: - Sections
+    private func connectivityNotice(message: String) -> some View {
+        Text(message)
+            .font(.footnote)
+            .foregroundColor(FluxoTheme.secondaryText)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(FluxoTheme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
 
     @ViewBuilder private var planOverviewSection: some View {
         if viewModel.isLoadingPlan && viewModel.plan == nil {
@@ -197,8 +209,6 @@ struct DashboardView: View {
         .padding(.bottom, 16)
     }
 
-    // MARK: - Reusable components
-
     private func planCard(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
@@ -211,28 +221,6 @@ struct DashboardView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(FluxoTheme.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-
-    private func placeholderCard(title: String, subtitle: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.subheadline.bold())
-                .foregroundColor(FluxoTheme.titleText)
-            Text(subtitle)
-                .font(.footnote)
-                .foregroundColor(FluxoTheme.secondaryText)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(FluxoTheme.cardBackground.opacity(0.6))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(
-                    FluxoTheme.secondaryText.opacity(0.2),
-                    style: StrokeStyle(lineWidth: 1, dash: [4])
-                )
-        )
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 

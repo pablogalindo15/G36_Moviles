@@ -40,14 +40,15 @@ final class CreateAccountViewModel: ObservableObject {
     }
 
     func createAccount() async -> AuthenticatedUser? {
-        // Local input checks to keep backend errors cleaner.
         errorMessage = nil
+        let trimmedName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard !trimmedName.isEmpty else {
             errorMessage = "Please enter your full name."
             return nil
         }
-        guard !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard !trimmedEmail.isEmpty else {
             errorMessage = "Please enter your email."
             return nil
         }
@@ -68,19 +69,22 @@ final class CreateAccountViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            // Optional avatar is uploaded inside AuthApplicationService.createAccount.
             let imageData = cameraFacade.jpegData(from: selectedImage)
             let user = try await authService.createAccount(
                 request: SignUpDTO(
-                    full_name: fullName.trimmingCharacters(in: .whitespacesAndNewlines),
-                    email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                    full_name: trimmedName,
+                    email: trimmedEmail,
                     password: password
                 ),
                 avatarJPEGData: imageData
             )
             return user
         } catch {
-            errorMessage = error.localizedDescription
+            if ConnectivitySupport.isConnectivityIssue(error) {
+                errorMessage = ConnectivitySupport.requiresInternetMessage(for: "Create account")
+            } else {
+                errorMessage = error.localizedDescription
+            }
             return nil
         }
     }

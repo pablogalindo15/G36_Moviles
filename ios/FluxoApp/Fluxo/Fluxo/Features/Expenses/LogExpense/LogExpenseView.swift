@@ -7,12 +7,14 @@ struct LogExpenseView: View {
     init(
         currency: String,
         service: ExpensesApplicationService,
+        preferencesAdapter: PreferencesAdapter,
         onExpenseCreated: @escaping (Expense) -> Void
     ) {
         _viewModel = StateObject(
             wrappedValue: LogExpenseViewModel(
                 currency: currency,
                 service: service,
+                preferencesAdapter: preferencesAdapter,
                 onExpenseCreated: onExpenseCreated
             )
         )
@@ -31,6 +33,13 @@ struct LogExpenseView: View {
                         Text(msg)
                             .font(.footnote)
                             .foregroundColor(FluxoTheme.error)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    if let infoMessage = viewModel.infoMessage {
+                        Text(infoMessage)
+                            .font(.footnote)
+                            .foregroundColor(FluxoTheme.secondaryText)
                             .multilineTextAlignment(.center)
                     }
 
@@ -59,6 +68,18 @@ struct LogExpenseView: View {
                 if viewModel.submitState == .submitting {
                     LoadingOverlay(title: "Saving...")
                 }
+            }
+            .onChange(of: viewModel.amountText) { _, _ in
+                viewModel.persistDraft()
+            }
+            .onChange(of: viewModel.selectedCategory) { _, _ in
+                viewModel.persistDraft()
+            }
+            .onChange(of: viewModel.note) { _, _ in
+                viewModel.persistDraft()
+            }
+            .onChange(of: viewModel.occurredAt) { _, _ in
+                viewModel.persistDraft()
             }
             .onChange(of: viewModel.submitState) { _, newValue in
                 if case .success = newValue {

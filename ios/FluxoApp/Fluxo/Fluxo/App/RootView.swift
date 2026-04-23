@@ -5,7 +5,6 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            // Single router decides which one of the 3 sprint views is visible.
             switch container.router.root {
             case .loading:
                 loadingView
@@ -33,14 +32,11 @@ struct RootView: View {
                         locationService: container.locationService,
                         locationAdapter: container.locationAdapter,
                         authAdapter: container.authAdapter,
+                        preferencesAdapter: container.preferencesAdapter,
                         onPlanGenerated: {
                             container.router.goToDashboard()
                         },
-                        onSignOut: {
-                            Task {
-                                await container.router.signOut()
-                            }
-                        }
+                        onSignOut: handleSignOut
                     )
                 } else {
                     loadingView
@@ -55,9 +51,7 @@ struct RootView: View {
                         savingsProjectionService: container.savingsProjectionService,
                         preferencesAdapter: container.preferencesAdapter,
                         expensesFileAdapter: container.expensesFileAdapter,
-                        onSignOut: {
-                            Task { await container.router.signOut() }
-                        }
+                        onSignOut: handleSignOut
                     )
                 )
             }
@@ -73,5 +67,13 @@ struct RootView: View {
                 .font(.subheadline)
                 .foregroundColor(FluxoTheme.secondaryText)
         }
+    }
+
+    private func handleSignOut() {
+        container.planSnapshotCache.clear()
+        container.preferencesAdapter.clearPendingUserNotice()
+        container.preferencesAdapter.clearSetupPlanDraft()
+        container.preferencesAdapter.clearExpenseDraft()
+        Task { await container.router.signOut() }
     }
 }

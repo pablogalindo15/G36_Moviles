@@ -12,6 +12,7 @@ final class AppContainer: ObservableObject {
     let topCategoriesService: TopCategoriesService
     let savingsProjectionService: SavingsProjectionService
     let localStore: LocalStore
+    let planSnapshotCache: PlanSnapshotMemoryCache
     let cameraFacade: CameraFacade
     let locationService: LocationService
     let locationAdapter: LocationAdapter
@@ -33,11 +34,9 @@ final class AppContainer: ObservableObject {
     }
 
     private init() throws {
-        // 1) Lectura de configuración Supabase.
         let config = try FrontendConfig.load()
         let httpClient = SupabaseHTTPClient(config: config)
 
-        // 2) Construir adapters.
         let keychainAdapter = KeychainAdapter()
         let preferencesAdapter = PreferencesAdapter()
         let expensesFileAdapter = ExpensesFileAdapter()
@@ -49,19 +48,21 @@ final class AppContainer: ObservableObject {
         let locationAdapter = LocationAdapter(httpClient: httpClient)
         let expensesAdapter = ExpensesAdapter(httpClient: httpClient)
 
-        // 3) Construir servicios de aplicación.
         let localStore = LocalStore()
+        let planSnapshotCache = PlanSnapshotMemoryCache()
 
         let authService = AuthApplicationService(
             authAdapter: authAdapter,
             profileAdapter: profileAdapter,
-            storageAdapter: storageAdapter
+            storageAdapter: storageAdapter,
+            preferencesAdapter: preferencesAdapter
         )
         let planService = PlanApplicationService(
             authAdapter: authAdapter,
             planAdapter: planAdapter,
             functionsAdapter: functionsAdapter,
-            localStore: localStore
+            localStore: localStore,
+            snapshotCache: planSnapshotCache
         )
         let expensesService = ExpensesApplicationService(
             expensesAdapter: expensesAdapter,
@@ -89,6 +90,7 @@ final class AppContainer: ObservableObject {
         self.topCategoriesService = topCategoriesService
         self.savingsProjectionService = savingsProjectionService
         self.localStore = localStore
+        self.planSnapshotCache = planSnapshotCache
         self.cameraFacade = CameraFacade()
         self.locationService = LocationService()
         self.locationAdapter = locationAdapter
@@ -98,7 +100,6 @@ final class AppContainer: ObservableObject {
         self.authAdapter = authAdapter
         self.router = AppRouter(authService: authService)
 
-        // RootView observa AppContainer, so we forward router updates.
         self.router.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
@@ -111,13 +112,11 @@ final class AppContainer: ObservableObject {
         hasStarted = true
         await router.bootstrap()
 
-        // PASO 7: if the authenticated user already has a financial setup,
-        // send them directly to the dashboard instead of the setup screen.
-        if router.root == .setupPlan, let user = router.currentUser {
-            if let snapshot = try? await planService.loadLatestSnapshot(userId: user.id),
-               snapshot.setup != nil {
-                router.goToDashboard()
-            }
+        guard router.root == .setupPlan, let user = router.currentUser else { return }
+
+        if let snapshot = try? await planService.loadLatestSnapshot(userId: user.id),
+           snapshot.setup != nil || snapshot.plan != nil {
+            router.goToDashboard()
         }
     }
 }
