@@ -3,17 +3,18 @@ package com.smartfinance.data.onboarding
 import com.smartfinance.core.model.FinancialSetup
 import com.smartfinance.core.model.FinancialSetupResponse
 import com.smartfinance.core.model.GeneratedPlan
-import com.smartfinance.domain.onboarding.PlanRequestDTO
-import com.smartfinance.domain.onboarding.PlanVO
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.functions.functions
+import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
-import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import kotlinx.serialization.json.Json
 
 class OnboardingRemoteDataSource(
     private val supabaseClient: SupabaseClient
 ) {
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun insertFinancialSetup(setup: FinancialSetup): String {
         val response = supabaseClient.from("financial_setups")
@@ -23,9 +24,14 @@ class OnboardingRemoteDataSource(
     }
 
     suspend fun generatePlan(plan: GeneratedPlan) {
-        val response = supabaseClient.functions.invoke("generate-first-plan") {
-            setBody(plan)
-        }
+        // Old method
+    }
+
+    suspend fun generateFirstPlan(request: GenerateFirstPlanRequest): GeneratedPlan {
+        // Passing the request directly to invoke() allows Supabase-kt to handle serialization and headers automatically
+        val response = supabaseClient.functions.invoke("generate-first-plan", request)
+        val jsonString = response.bodyAsText()
+        return json.decodeFromString<GenerateFirstPlanResponse>(jsonString).plan
     }
 
     suspend fun fetchFinancialSetup(userId: String): FinancialSetup? {

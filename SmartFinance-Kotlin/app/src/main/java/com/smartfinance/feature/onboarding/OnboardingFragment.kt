@@ -16,9 +16,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.smartfinance.R
 import com.smartfinance.core.model.UiState
 import com.smartfinance.databinding.FragmentOnboardingBinding
-import com.smartfinance.domain.onboarding.ExistingPlanVO
 import com.smartfinance.domain.onboarding.PlanRequestDTO
-import com.smartfinance.domain.onboarding.PlanVO
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -55,6 +53,7 @@ class OnboardingFragment : Fragment() {
         setupGenerateButton()
         setupSignOutButton()
         observeSignOut()
+        observePlanCreation()
 
         val userId = arguments?.getString("userId") ?: return
         viewModel.loadExistingPlan(userId)
@@ -73,7 +72,7 @@ class OnboardingFragment : Fragment() {
                             val bundle = Bundle().apply { putString("userId", userId) }
 
                             findNavController().navigate(
-                                R.id.action_onboarding_to_insights, // Asegúrate que este ID exista en tu nav_graph
+                                R.id.action_onboarding_to_insights,
                                 bundle
                             )
                         }

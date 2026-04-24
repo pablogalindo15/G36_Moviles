@@ -22,4 +22,8 @@ class SupabasePlanAdapter(
     override suspend fun fetchGeneratedPlan(userId: String): GeneratedPlan? {
         return remoteDataSource.fetchGeneratedPlan(userId)
     }
+
+    override suspend fun generateFirstPlan(request: GenerateFirstPlanRequest): GeneratedPlan {
+        return remoteDataSource.generateFirstPlan(request)
+    }
 }
