@@ -50,9 +50,7 @@ final class PlanApplicationService {
             return snapshot
         } catch {
             if let snapshot = await localSnapshot(userId: normalizedUserId) {
-                let fallbackReason: PlanSnapshotFallbackReason =
-                    ConnectivitySupport.isConnectivityIssue(error) ? .connectivity : .refreshFailed
-                return snapshot.withFallbackReason(fallbackReason)
+                return snapshot
             }
             throw error
         }
