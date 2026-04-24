@@ -88,7 +88,7 @@ final class DashboardViewModel: ObservableObject {
                 case .connectivity:
                     connectivityMessage = ConnectivitySupport.cachedContentMessage()
                 case .refreshFailed, .none:
-                    connectivityMessage = ConnectivitySupport.refreshFallbackMessage()
+                    connectivityMessage = nil
                 }
             }
             var dashboardLoadedSuccessfully = true

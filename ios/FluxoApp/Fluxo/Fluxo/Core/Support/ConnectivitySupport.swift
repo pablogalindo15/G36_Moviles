@@ -2,13 +2,17 @@ import Foundation
 
 enum ConnectivitySupport {
     static func isConnectivityIssue(_ error: Error) -> Bool {
-        let nsError = error as NSError
-        if nsError.domain == NSURLErrorDomain { return true }
-        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError,
-           underlying.domain == NSURLErrorDomain {
+        return urlErrorCode(from: error) != nil
+    }
+
+    static func isConfirmedOfflineIssue(_ error: Error) -> Bool {
+        guard let code = urlErrorCode(from: error) else { return false }
+        switch code {
+        case .notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff:
             return true
+        default:
+            return false
         }
-        return false
     }
 
     static func requiresInternetMessage(for feature: String) -> String {
@@ -29,5 +33,17 @@ enum ConnectivitySupport {
 
     static func noSavedContentMessage(for feature: String) -> String {
         "You're offline and we don't have saved \(feature) on this device yet. Connect to internet and try again."
+    }
+
+    private static func urlErrorCode(from error: Error) -> URLError.Code? {
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain {
+            return URLError.Code(rawValue: nsError.code)
+        }
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError,
+           underlying.domain == NSURLErrorDomain {
+            return URLError.Code(rawValue: underlying.code)
+        }
+        return nil
     }
 }

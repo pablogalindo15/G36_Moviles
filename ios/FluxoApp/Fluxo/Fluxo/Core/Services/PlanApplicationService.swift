@@ -51,7 +51,7 @@ final class PlanApplicationService {
         } catch {
             if let snapshot = await localSnapshot(userId: normalizedUserId) {
                 let fallbackReason: PlanSnapshotFallbackReason =
-                    ConnectivitySupport.isConnectivityIssue(error) ? .connectivity : .refreshFailed
+                    ConnectivitySupport.isConfirmedOfflineIssue(error) ? .connectivity : .refreshFailed
                 return snapshot.withFallbackReason(fallbackReason)
             }
             throw error
