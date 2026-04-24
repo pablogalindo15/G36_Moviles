@@ -29,7 +29,6 @@ class OnboardingApplicationService(
             "You have a full pay cycle ahead. Stay within your weekly cap to meet your savings goal."
         }
 
-        // Persist financial setup, get back the generated UUID
         val setup = FinancialSetup(
             userId = dto.userId,
             currency = dto.currency,
@@ -40,15 +39,6 @@ class OnboardingApplicationService(
         )
         val setupId = facade.saveFinancialSetup(setup)
 
-        // Persist generated plan with the setup fk
-        val generatedPlan = GeneratedPlan(
-            userId = dto.userId,
-            financialSetupId = setupId,
-            safeToSpendUntilNextPayday = proratedSafeToSpend,
-            weeklyCap = weeklyCap,
-            targetSavings = dto.monthlySavingsGoal,
-            contextualInsightMessage = insightMessage
-        )
         facade.saveGeneratedPlan(generatedPlan)
 
         return PlanVO(

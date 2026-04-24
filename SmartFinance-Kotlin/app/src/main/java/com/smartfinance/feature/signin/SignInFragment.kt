@@ -16,6 +16,8 @@ import com.smartfinance.databinding.FragmentSigninBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import com.smartfinance.R
+import com.smartfinance.domain.onboarding.ExistingPlanVO
+import com.smartfinance.domain.onboarding.PlanVO
 
 
 @AndroidEntryPoint
@@ -69,22 +71,48 @@ class SignInFragment : Fragment() {
     private fun observeState() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            viewModel.uiState.collect { state ->
-                when (state) {
-                    is UiState.Idle -> Unit
-                    is UiState.Loading -> binding.progressBar.visibility = View.VISIBLE
-                    is UiState.Success -> {
-                        binding.progressBar.visibility = View.GONE
-                        val bundle = android.os.Bundle().apply { putString("userId", state.data) }
-                        findNavController().navigate(R.id.action_signIn_to_onboarding, bundle)
-                    }
-                    is UiState.Error -> {
-                        binding.progressBar.visibility = View.GONE
-                        binding.tvError.text = state.message
-                        binding.tvError.visibility = View.VISIBLE
+                viewModel.uiState.collect { state ->
+                    when (state) {
+                        is UiState.Idle -> Unit
+                        is UiState.Loading -> {
+                            binding.progressBar.visibility = View.VISIBLE
+                            binding.btnSignIn.isEnabled = false
+                        }
+                        is UiState.Success -> {
+                            binding.progressBar.visibility = View.GONE
+                            checkUserPlanAndNavigate(state.data)
+                        }
+                        is UiState.Error -> {
+                            binding.progressBar.visibility = View.GONE
+                            binding.btnSignIn.isEnabled = true
+                            binding.tvError.text = state.message
+                            binding.tvError.visibility = View.VISIBLE
+                        }
                     }
                 }
             }
+        }
+    }
+
+    private fun checkUserPlanAndNavigate(userId: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            binding.progressBar.visibility = View.VISIBLE
+
+            // Aquí debe ser ExistingPlanVO?
+            val existingPlan: ExistingPlanVO? = viewModel.checkExistingPlan(userId)
+
+            if (existingPlan != null) {
+                // Si ya tiene plan -> Vamos a Insights pasando solo el ID
+                val bundle = Bundle().apply {
+                    putString("userId", userId)
+                }
+                findNavController().navigate(R.id.action_signIn_to_planResult, bundle)
+            } else {
+                // Si no existe -> Onboarding
+                val bundle = Bundle().apply {
+                    putString("userId", userId)
+                }
+                findNavController().navigate(R.id.action_signIn_to_onboarding, bundle)
             }
         }
     }

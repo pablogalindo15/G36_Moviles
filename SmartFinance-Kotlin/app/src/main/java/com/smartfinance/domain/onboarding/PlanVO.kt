@@ -1,5 +1,8 @@
 package com.smartfinance.domain.onboarding
 
+import android.os.Parcelable
+import androidx.versionedparcelable.VersionedParcelize
+
 data class PlanVO(
     val currency: String,
     val monthlySavingsGoal: Double,
@@ -9,6 +12,7 @@ data class PlanVO(
     val isProrated: Boolean,
     val contextualInsightMessage: String
 )
+
 
 data class ExistingPlanVO(
     val currency: String,
