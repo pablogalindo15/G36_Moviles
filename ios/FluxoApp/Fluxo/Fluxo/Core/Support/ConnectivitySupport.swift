@@ -23,6 +23,10 @@ enum ConnectivitySupport {
         "Showing saved data while you're offline. Pull to refresh when connection is back."
     }
 
+    static func refreshFallbackMessage() -> String {
+        "Showing saved data because we couldn't refresh the latest data right now. Pull to refresh and try again."
+    }
+
     static func noSavedContentMessage(for feature: String) -> String {
         "You're offline and we don't have saved \(feature) on this device yet. Connect to internet and try again."
     }

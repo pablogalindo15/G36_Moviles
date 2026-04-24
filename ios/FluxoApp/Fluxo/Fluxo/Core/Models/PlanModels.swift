@@ -49,15 +49,18 @@ struct PlanSnapshot {
     let setup: FinancialSetupRow?
     let plan: GeneratedPlanDTO?
     let source: PlanSnapshotSource
+    let fallbackReason: PlanSnapshotFallbackReason?
 
     init(
         setup: FinancialSetupRow?,
         plan: GeneratedPlanDTO?,
-        source: PlanSnapshotSource = .network
+        source: PlanSnapshotSource = .network,
+        fallbackReason: PlanSnapshotFallbackReason? = nil
     ) {
         self.setup = setup
         self.plan = plan
         self.source = source
+        self.fallbackReason = fallbackReason
     }
 }
 
@@ -67,9 +70,28 @@ enum PlanSnapshotSource {
     case localCache
 }
 
+enum PlanSnapshotFallbackReason {
+    case connectivity
+    case refreshFailed
+}
+
 extension PlanSnapshot {
     func withSource(_ source: PlanSnapshotSource) -> PlanSnapshot {
-        PlanSnapshot(setup: setup, plan: plan, source: source)
+        PlanSnapshot(
+            setup: setup,
+            plan: plan,
+            source: source,
+            fallbackReason: fallbackReason
+        )
+    }
+
+    func withFallbackReason(_ fallbackReason: PlanSnapshotFallbackReason?) -> PlanSnapshot {
+        PlanSnapshot(
+            setup: setup,
+            plan: plan,
+            source: source,
+            fallbackReason: fallbackReason
+        )
     }
 }
 

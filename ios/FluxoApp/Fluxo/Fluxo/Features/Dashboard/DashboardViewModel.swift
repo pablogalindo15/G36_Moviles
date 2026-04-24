@@ -84,7 +84,12 @@ final class DashboardViewModel: ObservableObject {
             }
             plan = snapshot.plan
             if snapshot.source == .localCache {
-                connectivityMessage = ConnectivitySupport.cachedContentMessage()
+                switch snapshot.fallbackReason {
+                case .connectivity:
+                    connectivityMessage = ConnectivitySupport.cachedContentMessage()
+                case .refreshFailed, .none:
+                    connectivityMessage = ConnectivitySupport.refreshFallbackMessage()
+                }
             }
             var dashboardLoadedSuccessfully = true
             if let nextPayday = cachedNextPayday {
