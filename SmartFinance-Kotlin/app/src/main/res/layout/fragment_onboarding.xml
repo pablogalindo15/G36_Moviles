@@ -220,12 +220,12 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/next_payday_layout" />
 
-        <!-- Generate button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_generate"
             android:layout_width="0dp"
             android:layout_height="56dp"
             android:layout_marginTop="24dp"
+            android:layout_marginBottom="32dp"
             android:text="@string/generate_plan"
             android:textAllCaps="false"
             android:textColor="@color/colorOnPrimary"
@@ -234,180 +234,8 @@
             app:cornerRadius="28dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/progress_indicator" />
-
-        <!-- Divider -->
-        <View
-            android:id="@+id/divider"
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_marginTop="32dp"
-            android:background="@color/colorGray"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btn_generate" />
-
-        <!-- ===== RESULT SECTION (initially GONE) ===== -->
-        <LinearLayout
-            android:id="@+id/result_section"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:orientation="vertical"
-            android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/divider">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/plan_results_title"
-                android:textColor="@color/colorTextPrimary"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="12dp" />
-
-            <!-- Safe to spend card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                app:cardBackgroundColor="@color/colorSurface"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/safe_to_spend_label"
-                        android:textColor="@color/colorTextSecondary"
-                        android:textSize="13sp" />
-                    <TextView
-                        android:id="@+id/safe_to_spend_amount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:textColor="@color/colorTextPrimary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Weekly cap card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                app:cardBackgroundColor="@color/colorSurface"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/weekly_cap_label"
-                        android:textColor="@color/colorTextSecondary"
-                        android:textSize="13sp" />
-                    <TextView
-                        android:id="@+id/weekly_cap_amount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:textColor="@color/colorTextPrimary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Target savings card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                app:cardBackgroundColor="@color/colorSurface"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/target_savings"
-                        android:textColor="@color/colorTextSecondary"
-                        android:textSize="13sp" />
-                    <TextView
-                        android:id="@+id/target_savings_amount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:textColor="@color/colorTextPrimary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Contextual insight card -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/insight_banner"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                app:cardBackgroundColor="@color/colorSurface"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/contextual_insight_label"
-                        android:textColor="@color/colorTextSecondary"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:id="@+id/insight_message"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:textColor="@color/colorTextPrimary"
-                        android:textSize="13sp" />
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Prorated banner (hidden, kept for logic) -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/prorated_banner"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:cardBackgroundColor="@color/colorSurface"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp">
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="16dp"
-                    android:text="@string/prorated_message"
-                    android:textColor="@color/colorTextSecondary"
-                    android:textSize="13sp" />
-            </androidx.cardview.widget.CardView>
-
-        </LinearLayout>
+            app:layout_constraintTop_toBottomOf="@id/progress_indicator"
+            app:layout_constraintBottom_toBottomOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.core.widget.NestedScrollView>

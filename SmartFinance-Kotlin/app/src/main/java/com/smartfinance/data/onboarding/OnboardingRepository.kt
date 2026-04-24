@@ -8,4 +8,5 @@ interface OnboardingRepository {
     suspend fun saveGeneratedPlan(plan: GeneratedPlan)
     suspend fun fetchFinancialSetup(userId: String): FinancialSetup?
     suspend fun fetchGeneratedPlan(userId: String): GeneratedPlan?
+    suspend fun generateFirstPlan(request: GenerateFirstPlanRequest): GeneratedPlan
 }

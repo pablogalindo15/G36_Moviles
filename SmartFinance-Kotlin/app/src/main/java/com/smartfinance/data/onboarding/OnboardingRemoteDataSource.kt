@@ -4,11 +4,17 @@ import com.smartfinance.core.model.FinancialSetup
 import com.smartfinance.core.model.FinancialSetupResponse
 import com.smartfinance.core.model.GeneratedPlan
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Order
+import io.ktor.client.statement.bodyAsText
+import kotlinx.serialization.json.Json
 
 class OnboardingRemoteDataSource(
     private val supabaseClient: SupabaseClient
 ) {
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun insertFinancialSetup(setup: FinancialSetup): String {
         val response = supabaseClient.from("financial_setups")
@@ -17,8 +23,15 @@ class OnboardingRemoteDataSource(
         return response.id
     }
 
-    suspend fun insertGeneratedPlan(plan: GeneratedPlan) {
-        supabaseClient.from("generated_plans").insert(plan)
+    suspend fun generatePlan(plan: GeneratedPlan) {
+        // Old method
+    }
+
+    suspend fun generateFirstPlan(request: GenerateFirstPlanRequest): GeneratedPlan {
+        // Passing the request directly to invoke() allows Supabase-kt to handle serialization and headers automatically
+        val response = supabaseClient.functions.invoke("generate-first-plan", request)
+        val jsonString = response.bodyAsText()
+        return json.decodeFromString<GenerateFirstPlanResponse>(jsonString).plan
     }
 
     suspend fun fetchFinancialSetup(userId: String): FinancialSetup? {
@@ -28,8 +41,17 @@ class OnboardingRemoteDataSource(
     }
 
     suspend fun fetchGeneratedPlan(userId: String): GeneratedPlan? {
-        return supabaseClient.from("generated_plans")
-            .select { filter { eq("user_id", userId) } }
-            .decodeSingleOrNull<GeneratedPlan>()
+        return try {
+            supabaseClient.from("generated_plans")
+                .select {
+                    filter { eq("user_id", userId) }
+                    order("generated_at", order = Order.DESCENDING)
+                    limit(1)
+                }
+                .decodeSingleOrNull<GeneratedPlan>()
+        } catch (e: Exception) {
+            null // Evita que la app se cierre si hay un error de red
+        }
     }
+
 }

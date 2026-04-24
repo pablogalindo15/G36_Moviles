@@ -12,7 +12,7 @@ class SupabasePlanAdapter(
     }
 
     override suspend fun saveGeneratedPlan(plan: GeneratedPlan) {
-        remoteDataSource.insertGeneratedPlan(plan)
+        remoteDataSource.generatePlan(plan)
     }
 
     override suspend fun fetchFinancialSetup(userId: String): FinancialSetup? {
@@ -21,5 +21,9 @@ class SupabasePlanAdapter(
 
     override suspend fun fetchGeneratedPlan(userId: String): GeneratedPlan? {
         return remoteDataSource.fetchGeneratedPlan(userId)
+    }
+
+    override suspend fun generateFirstPlan(request: GenerateFirstPlanRequest): GeneratedPlan {
+        return remoteDataSource.generateFirstPlan(request)
     }
 }

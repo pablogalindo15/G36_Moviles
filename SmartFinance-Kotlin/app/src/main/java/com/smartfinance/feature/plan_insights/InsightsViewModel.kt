@@ -1,11 +1,11 @@
-package com.smartfinance.feature.onboarding
+package com.smartfinance.feature.plan_insights
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartfinance.core.model.UiState
 import com.smartfinance.domain.onboarding.ExistingPlanVO
 import com.smartfinance.domain.onboarding.OnboardingApplicationService
-import com.smartfinance.domain.onboarding.PlanRequestDTO
 import com.smartfinance.domain.onboarding.PlanVO
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class OnboardingViewModel @Inject constructor(
+class InsightsViewModel @Inject constructor(
     private val applicationService: OnboardingApplicationService,
     private val supabase: SupabaseClient
 ) : ViewModel() {
@@ -28,36 +28,27 @@ class OnboardingViewModel @Inject constructor(
     private val _existingPlanState = MutableStateFlow<UiState<ExistingPlanVO>>(UiState.Idle)
     val existingPlanState: StateFlow<UiState<ExistingPlanVO>> = _existingPlanState.asStateFlow()
 
-    private val _signOutState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
-    val signOutState: StateFlow<UiState<Unit>> = _signOutState.asStateFlow()
-
     fun loadExistingPlan(userId: String) {
         viewModelScope.launch {
+            Log.d("OnboardingVM", "loadExistingPlan userId=$userId")
             _existingPlanState.value = UiState.Loading
             try {
                 val existing = applicationService.fetchExistingPlan(userId)
-                if (existing != null) {
-                    _existingPlanState.value = UiState.Success(existing)
+                Log.d("OnboardingVM", "fetchExistingPlan result=$existing")
+                _existingPlanState.value = if (existing != null) {
+                    UiState.Success(existing)
                 } else {
-                    _existingPlanState.value = UiState.Idle
+                    UiState.Idle
                 }
             } catch (e: Exception) {
-                _existingPlanState.value = UiState.Error(e.message ?: "Error loading plan")
+                Log.e("OnboardingVM", "fetchExistingPlan error", e)
+                _existingPlanState.value = UiState.Error(e.message ?: "An unexpected error occurred")
             }
         }
     }
 
-    fun submitPlan(dto: PlanRequestDTO) {
-        viewModelScope.launch {
-            _uiState.value = UiState.Loading
-            try {
-                val plan = applicationService.setupPlan(dto)
-                _uiState.value = UiState.Success(plan)
-            } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.message ?: "Error creating plan")
-            }
-        }
-    }
+    private val _signOutState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
+    val signOutState: StateFlow<UiState<Unit>> = _signOutState.asStateFlow()
 
     fun signOut() {
         viewModelScope.launch {
