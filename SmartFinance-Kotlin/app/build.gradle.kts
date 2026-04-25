@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.datastore.preferences)
 
     // Material
     implementation(libs.material)
@@ -76,6 +77,7 @@ dependencies {
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.play.services.location)
 
     // Room
     implementation(libs.room.runtime)

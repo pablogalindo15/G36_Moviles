@@ -3,9 +3,11 @@ package com.smartfinance.feature.plan_insights
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.smartfinance.core.model.LocationContext
 import com.smartfinance.core.model.UiState
 import com.smartfinance.domain.insights.ComparativeInsightApplicationService
 import com.smartfinance.domain.insights.ComparativeInsightVO
+import com.smartfinance.domain.location_context.LocationContextApplicationService
 import com.smartfinance.domain.onboarding.ExistingPlanVO
 import com.smartfinance.domain.onboarding.OnboardingApplicationService
 import com.smartfinance.domain.plan_insights.PlanInsightsApplicationService
@@ -24,6 +26,7 @@ class InsightsViewModel @Inject constructor(
     private val applicationService: OnboardingApplicationService,
     private val planInsightsApplicationService: PlanInsightsApplicationService,
     private val comparativeInsightApplicationService: ComparativeInsightApplicationService,
+    private val locationContextApplicationService: LocationContextApplicationService,
     private val supabase: SupabaseClient
 ) : ViewModel() {
 
@@ -39,6 +42,11 @@ class InsightsViewModel @Inject constructor(
         MutableStateFlow<UiState<ComparativeInsightVO>>(UiState.Idle)
     val comparativeInsightState: StateFlow<UiState<ComparativeInsightVO>> =
         _comparativeInsightState.asStateFlow()
+
+    private val _smartFeatureContextState =
+        MutableStateFlow<UiState<LocationContext>>(UiState.Idle)
+    val smartFeatureContextState: StateFlow<UiState<LocationContext>> =
+        _smartFeatureContextState.asStateFlow()
 
     private val _signOutState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
     val signOutState: StateFlow<UiState<Unit>> = _signOutState.asStateFlow()
@@ -98,6 +106,73 @@ class InsightsViewModel @Inject constructor(
 
     fun refreshComparativeInsight() {
         loadComparativeInsight(forceRefresh = true)
+    }
+
+    fun loadSmartFeatureContext() {
+        viewModelScope.launch {
+            try {
+                if (!locationContextApplicationService.shouldShowSmartFeaturePopup()) {
+                    _smartFeatureContextState.value = UiState.Idle
+                    return@launch
+                }
+
+                val cachedContext = locationContextApplicationService.getCachedContext()
+                if (cachedContext == null || (
+                        cachedContext.inflationWarning.isNullOrBlank() &&
+                            cachedContext.inflationRate == null
+                        )
+                ) {
+                    _smartFeatureContextState.value = UiState.Idle
+                    return@launch
+                }
+
+                _smartFeatureContextState.value = UiState.Success(cachedContext)
+            } catch (e: Exception) {
+                Log.e("InsightsViewModel", "Failed to load smart feature context", e)
+                _smartFeatureContextState.value = UiState.Idle
+            }
+        }
+    }
+
+    fun detectSmartFeatureContext(
+        latitude: Double,
+        longitude: Double,
+        countryCode: String? = null
+    ) {
+        viewModelScope.launch {
+            try {
+                if (!locationContextApplicationService.shouldShowSmartFeaturePopup()) {
+                    return@launch
+                }
+
+                if (locationContextApplicationService.getCachedContext() != null) {
+                    return@launch
+                }
+
+                val detectedContext = locationContextApplicationService.detectAndCache(
+                    latitude = latitude,
+                    longitude = longitude,
+                    countryCode = countryCode
+                )
+                if (detectedContext.inflationWarning.isNullOrBlank() &&
+                    detectedContext.inflationRate == null
+                ) {
+                    _smartFeatureContextState.value = UiState.Idle
+                    return@launch
+                }
+
+                _smartFeatureContextState.value = UiState.Success(detectedContext)
+            } catch (e: Exception) {
+                Log.e("InsightsViewModel", "Failed to detect smart feature context", e)
+            }
+        }
+    }
+
+    fun dismissSmartFeaturePopup() {
+        viewModelScope.launch {
+            locationContextApplicationService.markSmartFeaturePopupShown()
+            _smartFeatureContextState.value = UiState.Idle
+        }
     }
 
     fun signOut() {

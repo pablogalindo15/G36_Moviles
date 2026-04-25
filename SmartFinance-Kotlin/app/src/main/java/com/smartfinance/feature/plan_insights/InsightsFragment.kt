@@ -1,9 +1,12 @@
 package com.smartfinance.feature.plan_insights
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -11,8 +14,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.smartfinance.R
+import com.smartfinance.core.location.LocationCountryResolver
+import com.smartfinance.core.model.LocationContext
 import com.smartfinance.core.model.UiState
 import com.smartfinance.databinding.FragmentPlanInsightsBinding
 import com.smartfinance.domain.insights.ComparativeInsightVO
@@ -30,8 +39,10 @@ class InsightsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: InsightsViewModel by viewModels()
+    private val fusedLocationClient by lazy { LocationServices.getFusedLocationProviderClient(requireActivity()) }
     private var currentUserId: String? = null
     private var currentCurrency: String? = null
+    private var smartFeatureDialogVisible = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -52,6 +63,8 @@ class InsightsFragment : Fragment() {
             viewModel.loadExistingPlan(userId)
             viewModel.loadSavingsProjection(false)
             viewModel.loadComparativeInsight()
+            viewModel.loadSmartFeatureContext()
+            resolveSmartFeatureContextIfNeeded()
         } else {
             Snackbar.make(binding.root, "Error: User ID not found", Snackbar.LENGTH_LONG).show()
         }
@@ -152,6 +165,12 @@ class InsightsFragment : Fragment() {
                     }
                 }
 
+                launch {
+                    viewModel.smartFeatureContextState.collect { state ->
+                        renderSmartFeatureDialog(state)
+                    }
+                }
+
                 // Observar el estado del Sign Out
                 launch {
                     viewModel.signOutState.collect { state ->
@@ -207,6 +226,69 @@ class InsightsFragment : Fragment() {
                 binding.comparisonUnavailableText.visibility = View.VISIBLE
                 binding.comparisonUnavailableText.text = getString(R.string.comparison_error)
             }
+        }
+    }
+
+    private fun renderSmartFeatureDialog(state: UiState<LocationContext>) {
+        if (state !is UiState.Success || smartFeatureDialogVisible || !isAdded) return
+
+        val message = state.data.inflationWarning
+            ?: getString(
+                R.string.smart_feature_safe_message,
+                state.data.currency,
+                state.data.inflationRate ?: 0.0
+            )
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.smart_feature_dialog_title, state.data.currency))
+            .setMessage(message)
+            .setPositiveButton(R.string.smart_feature_dialog_close) { dialogInterface, _ ->
+                viewModel.dismissSmartFeaturePopup()
+                dialogInterface.dismiss()
+            }
+            .setCancelable(false)
+            .create()
+
+        smartFeatureDialogVisible = true
+        dialog.setOnDismissListener {
+            smartFeatureDialogVisible = false
+        }
+        dialog.show()
+    }
+
+    private fun resolveSmartFeatureContextIfNeeded() {
+        if (
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        val tokenSource = CancellationTokenSource()
+        try {
+            fusedLocationClient.getCurrentLocation(
+                Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+                tokenSource.token
+            ).addOnSuccessListener { location ->
+                if (location != null) {
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val countryCode = LocationCountryResolver.resolve(
+                            context = requireContext(),
+                            latitude = location.latitude,
+                            longitude = location.longitude
+                        )
+                        viewModel.detectSmartFeatureContext(
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                            countryCode = countryCode
+                        )
+                    }
+                }
+            }
+        } catch (_: SecurityException) {
+            // Non-blocking by design; the popup is skipped if location access fails here.
         }
     }
 

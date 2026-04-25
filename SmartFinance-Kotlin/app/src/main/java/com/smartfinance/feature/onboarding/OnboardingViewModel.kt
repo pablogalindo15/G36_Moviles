@@ -2,7 +2,9 @@ package com.smartfinance.feature.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.smartfinance.core.model.LocationContext
 import com.smartfinance.core.model.UiState
+import com.smartfinance.domain.location_context.LocationContextApplicationService
 import com.smartfinance.domain.onboarding.ExistingPlanVO
 import com.smartfinance.domain.onboarding.OnboardingApplicationService
 import com.smartfinance.domain.onboarding.PlanRequestDTO
@@ -19,6 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val applicationService: OnboardingApplicationService,
+    private val locationContextApplicationService: LocationContextApplicationService,
     private val supabase: SupabaseClient
 ) : ViewModel() {
 
@@ -27,6 +30,11 @@ class OnboardingViewModel @Inject constructor(
 
     private val _existingPlanState = MutableStateFlow<UiState<ExistingPlanVO>>(UiState.Idle)
     val existingPlanState: StateFlow<UiState<ExistingPlanVO>> = _existingPlanState.asStateFlow()
+
+    private val _locationContextState =
+        MutableStateFlow<UiState<LocationContext>>(UiState.Idle)
+    val locationContextState: StateFlow<UiState<LocationContext>> =
+        _locationContextState.asStateFlow()
 
     private val _signOutState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
     val signOutState: StateFlow<UiState<Unit>> = _signOutState.asStateFlow()
@@ -55,6 +63,28 @@ class OnboardingViewModel @Inject constructor(
                 _uiState.value = UiState.Success(plan)
             } catch (e: Exception) {
                 _uiState.value = UiState.Error(e.message ?: "Error creating plan")
+            }
+        }
+    }
+
+    fun detectLocationContext(
+        latitude: Double,
+        longitude: Double,
+        countryCode: String? = null
+    ) {
+        viewModelScope.launch {
+            _locationContextState.value = UiState.Loading
+            try {
+                _locationContextState.value = UiState.Success(
+                    locationContextApplicationService.detectAndCache(
+                        latitude = latitude,
+                        longitude = longitude,
+                        countryCode = countryCode
+                    )
+                )
+            } catch (e: Exception) {
+                _locationContextState.value =
+                    UiState.Error(e.message ?: "Couldn't detect local currency")
             }
         }
     }
