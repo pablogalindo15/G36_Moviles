@@ -2,6 +2,7 @@ package com.smartfinance.core.di
 
 import com.smartfinance.core.network.SupabaseClientProvider
 import com.smartfinance.data.local.SmartFinanceDao
+import com.smartfinance.data.insights.ComparativeInsightMemoryCache
 import com.smartfinance.data.insights.ComparativeInsightRemoteDataSource
 import com.smartfinance.data.insights.ComparativeInsightRepository
 import com.smartfinance.data.insights.SupabaseComparativeInsightAdapter
@@ -145,20 +146,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideComparativeInsightRepository(
-        remoteDataSource: ComparativeInsightRemoteDataSource
+        remoteDataSource: ComparativeInsightRemoteDataSource,
+        memoryCache: ComparativeInsightMemoryCache
     ): ComparativeInsightRepository {
-        return SupabaseComparativeInsightAdapter(remoteDataSource)
-    }
-
-    @Provides
-    @Singleton
-
-    @Provides
-    @Singleton
-    fun provideComparativeInsightRepository(
-        remoteDataSource: ComparativeInsightRemoteDataSource
-    ): ComparativeInsightRepository {
-        return SupabaseComparativeInsightAdapter(remoteDataSource)
+        return SupabaseComparativeInsightAdapter(remoteDataSource, memoryCache)
     }
 
     @Provides

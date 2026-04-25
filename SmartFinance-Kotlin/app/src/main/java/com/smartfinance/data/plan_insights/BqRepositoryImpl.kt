@@ -13,27 +13,34 @@ class BqRepositoryImpl @Inject constructor(
 ) : BqRepository {
 
     override suspend fun getSavingsProjection(forceRefresh: Boolean): SavingsProjectionVO {
-        if (!forceRefresh) {
-            val cachedSnapshot = memoryCache.getSnapshot()
-            val cachedProjection = cachedSnapshot?.savingsProjection
+        val cachedProjection = memoryCache.getSnapshot()?.savingsProjection
 
+        if (!forceRefresh) {
             if (cachedProjection != null) {
                 Log.d("BqRepository", "Returning savings projection from memory cache")
                 return cachedProjection
             }
         }
 
-        Log.d("BqRepository", "Fetching savings projection from remote")
-        val freshProjection = remoteDataSource.getSavingsProjection()
+        try {
+            Log.d("BqRepository", "Fetching savings projection from remote")
+            val freshProjection = remoteDataSource.getSavingsProjection()
 
-        val newSnapshot = PlanSnapshotVO(
-            savingsProjection = freshProjection,
-            fetchedAt = System.currentTimeMillis()
-        )
+            val newSnapshot = PlanSnapshotVO(
+                savingsProjection = freshProjection,
+                fetchedAt = System.currentTimeMillis()
+            )
 
-        memoryCache.saveSnapshot(newSnapshot)
-        Log.d("BqRepository", "Saved fresh savings projection in memory cache")
+            memoryCache.saveSnapshot(newSnapshot)
+            Log.d("BqRepository", "Saved fresh savings projection in memory cache")
 
-        return freshProjection
+            return freshProjection
+        } catch (e: Exception) {
+            if (cachedProjection != null) {
+                Log.w("BqRepository", "Remote savings projection failed; returning cache", e)
+                return cachedProjection
+            }
+            throw e
+        }
     }
 }

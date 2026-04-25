@@ -63,6 +63,7 @@ class InsightsFragment : Fragment() {
 
         binding.btnRefreshInsights.setOnClickListener {
             viewModel.refreshSavingsProjection()
+            viewModel.refreshComparativeInsight()
         }
     }
 
@@ -115,11 +116,6 @@ class InsightsFragment : Fragment() {
                             is UiState.Error -> {
                                 binding.tvSavingsProjectionMessage.text =
                                     "Couldn't load savings projection."
-                                Snackbar.make(
-                                    binding.root,
-                                    state.message,
-                                    Snackbar.LENGTH_SHORT
-                                ).show()
                             }
 
                             else -> Unit
