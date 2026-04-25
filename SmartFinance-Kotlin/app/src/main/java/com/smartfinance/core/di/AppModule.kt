@@ -1,6 +1,7 @@
 package com.smartfinance.core.di
 
 import com.smartfinance.core.network.SupabaseClientProvider
+import com.smartfinance.data.local.SmartFinanceDao
 import com.smartfinance.data.onboarding.OnboardingRemoteDataSource
 import com.smartfinance.data.onboarding.OnboardingRepository
 import com.smartfinance.data.onboarding.SupabasePlanAdapter
@@ -41,9 +42,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOnboardingRepository(
-        remoteDataSource: OnboardingRemoteDataSource
+        remoteDataSource: OnboardingRemoteDataSource,
+        localDao: SmartFinanceDao
     ): OnboardingRepository {
-        return SupabasePlanAdapter(remoteDataSource)
+        return SupabasePlanAdapter(remoteDataSource, localDao)
     }
 
     @Provides
@@ -101,4 +103,3 @@ object AppModule {
     ): SignInRepository = adapter
 
 }
-

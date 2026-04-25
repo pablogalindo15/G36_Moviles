@@ -52,8 +52,7 @@ class InsightsFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        // Ejemplo: Si quieres que al tocar el título se cierre sesión
-        binding.tvMainTitle.setOnClickListener {
+        binding.btnSignOut.setOnClickListener {
             viewModel.signOut()
         }
     }
