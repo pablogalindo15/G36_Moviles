@@ -36,7 +36,11 @@ class OnboardingRemoteDataSource(
 
     suspend fun fetchFinancialSetup(userId: String): FinancialSetup? {
         return supabaseClient.from("financial_setups")
-            .select { filter { eq("user_id", userId) } }
+            .select {
+                filter { eq("user_id", userId) }
+                order("created_at", order = Order.DESCENDING)
+                limit(1)
+            }
             .decodeSingleOrNull<FinancialSetup>()
     }
 

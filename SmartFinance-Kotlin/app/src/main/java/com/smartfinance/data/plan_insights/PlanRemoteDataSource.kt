@@ -16,6 +16,7 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
+import java.util.Locale
 import javax.inject.Inject
 
 class PlanRemoteDataSource @Inject constructor(
@@ -27,11 +28,40 @@ class PlanRemoteDataSource @Inject constructor(
         val body = response.bodyAsText()
         val json = Json.parseToJsonElement(body).jsonObject
 
+        json.stringValue("error")?.let { error ->
+            throw IllegalStateException(error)
+        }
+
+        val insufficientData = json.booleanValue("insufficient_data") == true
+        val expensesCountBasis = json.intValue("expenses_count_basis") ?: 0
+        if (insufficientData) {
+            return SavingsProjectionVO(
+                isOnTrack = false,
+                projectedSavings = 0.0,
+                savingsGoal = 0.0,
+                message = "Not enough data yet. Log at least 3 expenses in the last 2 weeks. Current: $expensesCountBasis.",
+                computedAt = System.currentTimeMillis()
+            )
+        }
+
+        val isOnTrack = json.booleanValue("isOnTrack", "is_on_track", "on_track")
+            ?: throw IllegalStateException("Missing on_track")
+        val projectedSavings = json.doubleValue("projectedSavings", "projected_savings")
+            ?: throw IllegalStateException("Missing projected_savings")
+        val savingsGoal = json.doubleValue("savingsGoal", "savings_goal")
+            ?: throw IllegalStateException("Missing savings_goal")
+        val currency = json.stringValue("currency").orEmpty()
+        val delta = json.doubleValue("delta")
+
         return SavingsProjectionVO(
-            isOnTrack = json.booleanValue("isOnTrack", "is_on_track") ?: false,
-            projectedSavings = json.doubleValue("projectedSavings", "projected_savings") ?: 0.0,
-            savingsGoal = json.doubleValue("savingsGoal", "savings_goal") ?: 0.0,
-            message = json.stringValue("message").orEmpty(),
+            isOnTrack = isOnTrack,
+            projectedSavings = projectedSavings,
+            savingsGoal = savingsGoal,
+            message = buildSavingsProjectionMessage(
+                isOnTrack = isOnTrack,
+                currency = currency,
+                delta = delta
+            ),
             computedAt = json.longValue("computedAt", "computed_at") ?: System.currentTimeMillis()
         )
     }
@@ -76,6 +106,23 @@ class PlanRemoteDataSource @Inject constructor(
 
     private fun JsonObject.intValue(vararg keys: String): Int? {
         return firstPrimitive(keys)?.intOrNull
+    }
+
+    private fun buildSavingsProjectionMessage(
+        isOnTrack: Boolean,
+        currency: String,
+        delta: Double?
+    ): String {
+        if (delta == null) {
+            return if (isOnTrack) "On track." else "Off track."
+        }
+
+        val formattedDelta = String.format(Locale.US, "%.2f", kotlin.math.abs(delta))
+        return if (isOnTrack) {
+            "On track. You'll exceed your goal by $currency $formattedDelta."
+        } else {
+            "Off track. You'll be short by $currency $formattedDelta."
+        }
     }
 
     private fun JsonObject.firstPrimitive(keys: Array<out String>) =
