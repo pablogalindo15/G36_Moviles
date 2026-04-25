@@ -54,6 +54,55 @@ object DatabaseModule {
         }
     }
 
+    private val migration2To3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS local_expense_new (
+                    id TEXT NOT NULL,
+                    userId TEXT NOT NULL,
+                    amount REAL NOT NULL,
+                    currency TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    note TEXT,
+                    occurredAt TEXT NOT NULL,
+                    createdAt TEXT NOT NULL,
+                    clientUuid TEXT NOT NULL,
+                    PRIMARY KEY(id)
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO local_expense_new (
+                    id,
+                    userId,
+                    amount,
+                    currency,
+                    category,
+                    note,
+                    occurredAt,
+                    createdAt,
+                    clientUuid
+                )
+                SELECT
+                    id,
+                    userId,
+                    amount,
+                    'USD',
+                    category,
+                    description,
+                    date,
+                    date,
+                    id
+                FROM local_expense
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE local_expense")
+            db.execSQL("ALTER TABLE local_expense_new RENAME TO local_expense")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SmartFinanceDatabase {
@@ -63,6 +112,7 @@ object DatabaseModule {
             "smart_finance_db"
         )
             .addMigrations(migration1To2)
+            .addMigrations(migration2To3)
             .build()
     }
 

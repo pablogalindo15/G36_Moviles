@@ -391,4 +391,17 @@
         android:text="Refresh Insights"
         app:layout_constraintBottom_toBottomOf="parent" />
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_add_expense"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="20dp"
+        android:contentDescription="@string/add_expense"
+        android:src="@android:drawable/ic_input_add"
+        app:backgroundTint="@color/colorPrimary"
+        app:layout_constraintBottom_toTopOf="@id/btn_refresh_insights"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tint="@color/colorOnPrimary" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

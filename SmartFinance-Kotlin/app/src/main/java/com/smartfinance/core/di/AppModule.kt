@@ -1,6 +1,9 @@
 package com.smartfinance.core.di
 
 import com.smartfinance.core.network.SupabaseClientProvider
+import com.smartfinance.data.expenses.ExpenseRemoteDataSource
+import com.smartfinance.data.expenses.ExpenseRepository
+import com.smartfinance.data.expenses.SupabaseExpenseAdapter
 import com.smartfinance.data.local.SmartFinanceDao
 import com.smartfinance.data.insights.ComparativeInsightMemoryCache
 import com.smartfinance.data.insights.ComparativeInsightRemoteDataSource
@@ -15,6 +18,7 @@ import com.smartfinance.data.register.SupabaseRegisterAdapter
 import com.smartfinance.data.signin.SignInRepository
 import com.smartfinance.data.signin.SupabaseSignInAdapter
 import com.smartfinance.domain.insights.ComparativeInsightApplicationService
+import com.smartfinance.domain.expenses.ExpenseApplicationService
 import com.smartfinance.domain.onboarding.OnboardingApplicationService
 import com.smartfinance.domain.onboarding.OnboardingFacade
 import com.smartfinance.domain.register.RegisterApplicationService
@@ -110,6 +114,31 @@ object AppModule {
     fun provideSignInRepository(
         adapter: SupabaseSignInAdapter
     ): SignInRepository = adapter
+
+    @Provides
+    @Singleton
+    fun provideExpenseRemoteDataSource(
+        supabaseClient: SupabaseClient
+    ): ExpenseRemoteDataSource {
+        return ExpenseRemoteDataSource(supabaseClient)
+    }
+
+    @Provides
+    @Singleton
+    fun provideExpenseRepository(
+        remoteDataSource: ExpenseRemoteDataSource,
+        localDao: SmartFinanceDao
+    ): ExpenseRepository {
+        return SupabaseExpenseAdapter(remoteDataSource, localDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideExpenseApplicationService(
+        repository: ExpenseRepository
+    ): ExpenseApplicationService {
+        return ExpenseApplicationService(repository)
+    }
 
     @Provides
     @Singleton

@@ -67,7 +67,12 @@ class MainActivity : AppCompatActivity() {
 
         binding.bottomNav.setupWithNavController(navController)
 
-        val hideNavDestinations = setOf(R.id.signInFragment, R.id.registerFragment, R.id.onboardingFragment)
+        val hideNavDestinations = setOf(
+            R.id.signInFragment,
+            R.id.registerFragment,
+            R.id.onboardingFragment,
+            R.id.logExpenseFragment
+        )
         navController.addOnDestinationChangedListener { _, destination, _ ->
             binding.bottomNav.visibility =
                 if (destination.id in hideNavDestinations) View.GONE else View.VISIBLE

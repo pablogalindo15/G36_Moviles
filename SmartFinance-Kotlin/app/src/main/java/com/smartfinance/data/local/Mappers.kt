@@ -1,7 +1,9 @@
 package com.smartfinance.data.local
 
+import com.smartfinance.core.model.ExpenseRecord
 import com.smartfinance.core.model.FinancialSetup
 import com.smartfinance.core.model.GeneratedPlan
+import com.smartfinance.domain.expenses.ExpenseVO
 
 fun FinancialSetup.toLocal(id: String) = LocalFinancialSetup(
     id = id,
@@ -40,4 +42,28 @@ fun LocalPlan.toDomain() = GeneratedPlan(
     weeklyCap = weeklyCap,
     targetSavings = targetSavings,
     insightMessage = insightMessage
+)
+
+fun ExpenseRecord.toLocal() = LocalExpense(
+    id = id,
+    userId = userId,
+    amount = amount,
+    currency = currency,
+    category = category,
+    note = note,
+    occurredAt = occurredAt,
+    createdAt = createdAt,
+    clientUuid = clientUuid
+)
+
+fun ExpenseRecord.toDomain() = ExpenseVO(
+    id = id,
+    userId = userId,
+    amount = amount,
+    currency = currency,
+    category = category,
+    note = note,
+    occurredAt = occurredAt,
+    createdAt = createdAt,
+    clientUuid = clientUuid
 )

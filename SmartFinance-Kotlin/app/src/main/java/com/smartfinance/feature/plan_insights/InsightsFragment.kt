@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -29,6 +30,8 @@ class InsightsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: InsightsViewModel by viewModels()
+    private var currentUserId: String? = null
+    private var currentCurrency: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -43,6 +46,7 @@ class InsightsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val userId = arguments?.getString("userId")
+        currentUserId = userId
 
         if (userId != null) {
             viewModel.loadExistingPlan(userId)
@@ -64,6 +68,25 @@ class InsightsFragment : Fragment() {
         binding.btnRefreshInsights.setOnClickListener {
             viewModel.refreshSavingsProjection()
             viewModel.refreshComparativeInsight()
+        }
+
+        binding.fabAddExpense.setOnClickListener {
+            val userId = currentUserId
+            val currency = currentCurrency
+
+            if (userId.isNullOrBlank() || currency.isNullOrBlank()) {
+                Snackbar.make(binding.root, "Plan data is still loading.", Snackbar.LENGTH_SHORT)
+                    .show()
+                return@setOnClickListener
+            }
+
+            findNavController().navigate(
+                R.id.action_insights_to_logExpense,
+                bundleOf(
+                    "userId" to userId,
+                    "currency" to currency
+                )
+            )
         }
     }
 
@@ -141,6 +164,20 @@ class InsightsFragment : Fragment() {
                 }
             }
         }
+
+        findNavController().currentBackStackEntry
+            ?.savedStateHandle
+            ?.getLiveData<Boolean>("expense_saved")
+            ?.observe(viewLifecycleOwner) { wasSaved ->
+                if (wasSaved == true) {
+                    viewModel.refreshSavingsProjection()
+                    viewModel.refreshComparativeInsight()
+                    findNavController().currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("expense_saved", false)
+                    Snackbar.make(binding.root, "Expense saved.", Snackbar.LENGTH_SHORT).show()
+                }
+            }
     }
 
     private fun renderComparativeInsight(state: UiState<ComparativeInsightVO>) {
@@ -223,6 +260,7 @@ class InsightsFragment : Fragment() {
     private fun populateUI(existingPlan: ExistingPlanVO) {
         val planDetails = existingPlan.plan
         val currency = existingPlan.currency
+        currentCurrency = currency
 
         with(binding) {
             safeToSpendAmount.text =
