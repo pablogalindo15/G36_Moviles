@@ -5,14 +5,22 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            // Single router decides which one of the 3 sprint views is visible.
             switch container.router.root {
             case .loading:
                 loadingView
             case .signIn:
                 SignInView(
                     authService: container.authService,
-                    cameraFacade: container.cameraFacade
+                    createAccountDestination: {
+                        AnyView(
+                            CreateAccountView(
+                                authService: container.authService,
+                                cameraFacade: container.cameraFacade
+                            ) { user in
+                                container.router.handleSignedIn(user)
+                            }
+                        )
+                    }
                 ) { user in
                     container.router.handleSignedIn(user)
                 }
@@ -20,15 +28,32 @@ struct RootView: View {
                 if let user = container.router.currentUser {
                     SetupPlanView(
                         user: user,
-                        planService: container.planService
-                    ) {
-                        Task {
-                            await container.router.signOut()
-                        }
-                    }
+                        planService: container.planService,
+                        locationService: container.locationService,
+                        locationAdapter: container.locationAdapter,
+                        authAdapter: container.authAdapter,
+                        preferencesAdapter: container.preferencesAdapter,
+                        onPlanGenerated: {
+                            container.router.goToDashboard()
+                        },
+                        onSignOut: handleSignOut
+                    )
                 } else {
                     loadingView
                 }
+            case .dashboard:
+                DashboardView(
+                    viewModel: DashboardViewModel(
+                        planService: container.planService,
+                        expensesService: container.expensesService,
+                        comparativeSpendingService: container.comparativeSpendingService,
+                        topCategoriesService: container.topCategoriesService,
+                        savingsProjectionService: container.savingsProjectionService,
+                        preferencesAdapter: container.preferencesAdapter,
+                        expensesFileAdapter: container.expensesFileAdapter,
+                        onSignOut: handleSignOut
+                    )
+                )
             }
         }
         .background(FluxoTheme.background.ignoresSafeArea())
@@ -42,5 +67,13 @@ struct RootView: View {
                 .font(.subheadline)
                 .foregroundColor(FluxoTheme.secondaryText)
         }
+    }
+
+    private func handleSignOut() {
+        container.planSnapshotCache.clear()
+        container.preferencesAdapter.clearPendingUserNotice()
+        container.preferencesAdapter.clearSetupPlanDraft()
+        container.preferencesAdapter.clearExpenseDraft()
+        Task { await container.router.signOut() }
     }
 }

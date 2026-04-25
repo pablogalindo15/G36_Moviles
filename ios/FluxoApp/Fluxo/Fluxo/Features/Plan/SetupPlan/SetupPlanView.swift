@@ -9,12 +9,25 @@ struct SetupPlanView: View {
     init(
         user: AuthenticatedUser,
         planService: PlanApplicationService,
+        locationService: LocationService,
+        locationAdapter: LocationAdapter,
+        authAdapter: AuthAdapter,
+        preferencesAdapter: PreferencesAdapter,
+        onPlanGenerated: @escaping () -> Void,
         onSignOut: @escaping () -> Void
     ) {
         self.user = user
         self.onSignOut = onSignOut
         _viewModel = StateObject(
-            wrappedValue: SetupPlanViewModel(planService: planService, userId: user.id)
+            wrappedValue: SetupPlanViewModel(
+                planService: planService,
+                locationService: locationService,
+                locationAdapter: locationAdapter,
+                authAdapter: authAdapter,
+                preferencesAdapter: preferencesAdapter,
+                userId: user.id,
+                onPlanGenerated: onPlanGenerated
+            )
         )
     }
 
@@ -26,11 +39,14 @@ struct SetupPlanView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         headerSection
+                        if let message = viewModel.contextMessage {
+                            supportCard(title: "Manual fallback", message: message, accentColor: FluxoTheme.primary)
+                        }
+                        if let warning = viewModel.inflationWarning {
+                            supportCard(title: "Currency alert", message: warning, accentColor: .orange)
+                        }
                         formSection
                         generateButton
-                        if let generatedPlan = viewModel.generatedPlan {
-                            resultsSection(plan: generatedPlan)
-                        }
                     }
                     .padding(20)
                 }
@@ -38,13 +54,25 @@ struct SetupPlanView: View {
                 if viewModel.isLoading || viewModel.isLoadingInitialData {
                     LoadingOverlay(
                         title: viewModel.isLoadingInitialData
-                            ? "Loading your latest plan..."
+                            ? "Fetching your currency..."
                             : "Generating your first plan..."
                     )
                 }
             }
             .task {
                 await viewModel.loadLatestIfNeeded()
+            }
+            .onChange(of: viewModel.monthlyIncome) { _, _ in
+                viewModel.persistDraft()
+            }
+            .onChange(of: viewModel.fixedMonthlyExpenses) { _, _ in
+                viewModel.persistDraft()
+            }
+            .onChange(of: viewModel.monthlySavingsGoal) { _, _ in
+                viewModel.persistDraft()
+            }
+            .onChange(of: viewModel.nextPayday) { _, _ in
+                viewModel.persistDraft()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -85,12 +113,32 @@ struct SetupPlanView: View {
         .fluxoCardContainer()
     }
 
+    private func supportCard(title: String, message: String, accentColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(accentColor)
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(FluxoTheme.secondaryText)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fluxoCardContainer()
+    }
+
     private var formSection: some View {
         VStack(spacing: 14) {
             FluxoInputField(title: "Currency") {
                 TextField("USD / COP / EUR", text: $viewModel.currency)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
+                    .onChange(of: viewModel.currency) { _, new in
+                        if new.count > 3 {
+                            viewModel.currency = String(new.prefix(3))
+                            return
+                        }
+                        viewModel.persistDraft()
+                    }
             }
 
             FluxoInputField(title: "Monthly income") {
@@ -112,6 +160,7 @@ struct SetupPlanView: View {
                 DatePicker(
                     "Select date",
                     selection: $viewModel.nextPayday,
+                    in: Date()...,
                     displayedComponents: .date
                 )
                 .labelsHidden()
@@ -136,59 +185,5 @@ struct SetupPlanView: View {
             .buttonStyle(FluxoPrimaryButtonStyle(isDisabled: viewModel.isLoading))
             .disabled(viewModel.isLoading)
         }
-    }
-
-    private func resultsSection(plan: GeneratedPlanDTO) -> some View {
-        // Direct mapping of backend response fields to UI cards.
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Your plan results")
-                .font(.headline.weight(.bold))
-                .foregroundColor(FluxoTheme.titleText)
-
-            ResultMetricCard(
-                title: "Safe to spend until next payday",
-                value: "\(viewModel.currency.uppercased()) \(money(plan.safe_to_spend_until_next_payday))"
-            )
-            ResultMetricCard(
-                title: "Recommended weekly cap",
-                value: "\(viewModel.currency.uppercased()) \(money(plan.weekly_cap))"
-            )
-            ResultMetricCard(
-                title: "Target savings",
-                value: "\(viewModel.currency.uppercased()) \(money(plan.target_savings))"
-            )
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Contextual insight")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(FluxoTheme.titleText)
-                Text(plan.contextual_insight_message)
-                    .font(.subheadline)
-                    .foregroundColor(FluxoTheme.secondaryText)
-            }
-            .fluxoCardContainer()
-        }
-    }
-
-    private func money(_ value: Double) -> String {
-        String(format: "%.2f", value)
-    }
-}
-
-private struct ResultMetricCard: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(FluxoTheme.secondaryText)
-            Text(value)
-                .font(.title3.weight(.bold))
-                .foregroundColor(FluxoTheme.titleText)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .fluxoCardContainer()
     }
 }

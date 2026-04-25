@@ -4,9 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartfinance.core.model.UiState
+import com.smartfinance.domain.insights.ComparativeInsightApplicationService
+import com.smartfinance.domain.insights.ComparativeInsightVO
 import com.smartfinance.domain.onboarding.ExistingPlanVO
 import com.smartfinance.domain.onboarding.OnboardingApplicationService
-import com.smartfinance.domain.onboarding.PlanVO
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
@@ -19,14 +20,17 @@ import javax.inject.Inject
 @HiltViewModel
 class InsightsViewModel @Inject constructor(
     private val applicationService: OnboardingApplicationService,
+    private val comparativeInsightApplicationService: ComparativeInsightApplicationService,
     private val supabase: SupabaseClient
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<UiState<PlanVO>>(UiState.Idle)
-    val uiState: StateFlow<UiState<PlanVO>> = _uiState.asStateFlow()
-
     private val _existingPlanState = MutableStateFlow<UiState<ExistingPlanVO>>(UiState.Idle)
     val existingPlanState: StateFlow<UiState<ExistingPlanVO>> = _existingPlanState.asStateFlow()
+
+    private val _comparativeInsightState =
+        MutableStateFlow<UiState<ComparativeInsightVO>>(UiState.Idle)
+    val comparativeInsightState: StateFlow<UiState<ComparativeInsightVO>> =
+        _comparativeInsightState.asStateFlow()
 
     fun loadExistingPlan(userId: String) {
         viewModelScope.launch {
@@ -43,6 +47,21 @@ class InsightsViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e("OnboardingVM", "fetchExistingPlan error", e)
                 _existingPlanState.value = UiState.Error(e.message ?: "An unexpected error occurred")
+            }
+        }
+    }
+
+    fun loadComparativeInsight() {
+        viewModelScope.launch {
+            _comparativeInsightState.value = UiState.Loading
+            try {
+                _comparativeInsightState.value = UiState.Success(
+                    comparativeInsightApplicationService.fetchWeeklyComparison()
+                )
+            } catch (e: Exception) {
+                Log.e("InsightsViewModel", "Failed to load comparative insight", e)
+                _comparativeInsightState.value =
+                    UiState.Error("Couldn't load spending comparison.")
             }
         }
     }
