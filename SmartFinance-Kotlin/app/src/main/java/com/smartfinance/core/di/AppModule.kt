@@ -147,9 +147,16 @@ object AppModule {
     @Singleton
     fun provideComparativeInsightRepository(
         remoteDataSource: ComparativeInsightRemoteDataSource,
-        memoryCache: ComparativeInsightMemoryCache
+        memoryCache: ComparativeInsightMemoryCache,
+        localDao: SmartFinanceDao,
+        supabaseClient: SupabaseClient
     ): ComparativeInsightRepository {
-        return SupabaseComparativeInsightAdapter(remoteDataSource, memoryCache)
+        return SupabaseComparativeInsightAdapter(
+            remoteDataSource = remoteDataSource,
+            memoryCache = memoryCache,
+            localDao = localDao,
+            supabaseClient = supabaseClient
+        )
     }
 
     @Provides

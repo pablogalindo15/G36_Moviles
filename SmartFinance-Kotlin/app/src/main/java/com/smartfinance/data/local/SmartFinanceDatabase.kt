@@ -7,9 +7,11 @@ import androidx.room.RoomDatabase
     entities = [
         LocalFinancialSetup::class,
         LocalPlan::class,
-        LocalExpense::class
+        LocalExpense::class,
+        LocalSavingsProjectionCache::class,
+        LocalComparativeInsightCache::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class SmartFinanceDatabase : RoomDatabase() {
