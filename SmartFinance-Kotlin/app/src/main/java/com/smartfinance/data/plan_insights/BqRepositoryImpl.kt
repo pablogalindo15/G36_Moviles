@@ -25,7 +25,9 @@ class BqRepositoryImpl @Inject constructor(
 
     override suspend fun getSavingsProjection(forceRefresh: Boolean): SavingsProjectionVO {
         val userId = requireUserId()
-        val cachedProjection = memoryCache.getSnapshot()?.savingsProjection
+        val cachedProjection = memoryCache.getSnapshot()
+            ?.savingsProjection
+            ?.takeIf { it.isValidCacheEntry() }
 
         if (!forceRefresh) {
             if (cachedProjection != null) {
@@ -33,7 +35,9 @@ class BqRepositoryImpl @Inject constructor(
                 return cachedProjection
             }
 
-            val persistedProjection = localDao.getSavingsProjectionCache(userId)?.toDomain()
+            val persistedProjection = localDao.getSavingsProjectionCache(userId)
+                ?.toDomain()
+                ?.takeIf { it.isValidCacheEntry() }
             if (persistedProjection != null) {
                 Log.d("BqRepository", "Returning savings projection from Room cache")
                 memoryCache.saveSnapshot(
@@ -64,7 +68,9 @@ class BqRepositoryImpl @Inject constructor(
 
             return freshProjection
         } catch (e: Exception) {
-            val persistedProjection = localDao.getSavingsProjectionCache(userId)?.toDomain()
+            val persistedProjection = localDao.getSavingsProjectionCache(userId)
+                ?.toDomain()
+                ?.takeIf { it.isValidCacheEntry() }
             val fallbackProjection = cachedProjection ?: persistedProjection
 
             if (fallbackProjection != null) {
@@ -166,6 +172,10 @@ class BqRepositoryImpl @Inject constructor(
             computedAt = computedAt,
             cachedAt = System.currentTimeMillis()
         )
+    }
+
+    private fun SavingsProjectionVO.isValidCacheEntry(): Boolean {
+        return message.isNotBlank() || projectedSavings != 0.0 || savingsGoal != 0.0
     }
 
     private fun LocalTopCategoriesCache.toDomain(): TopCategoriesResultVO {

@@ -9,6 +9,10 @@ import com.smartfinance.data.insights.ComparativeInsightMemoryCache
 import com.smartfinance.data.insights.ComparativeInsightRemoteDataSource
 import com.smartfinance.data.insights.ComparativeInsightRepository
 import com.smartfinance.data.insights.SupabaseComparativeInsightAdapter
+import com.smartfinance.data.location_context.LocationContextPreferenceStore
+import com.smartfinance.data.location_context.LocationContextRemoteDataSource
+import com.smartfinance.data.location_context.LocationContextRepository
+import com.smartfinance.data.location_context.SupabaseLocationContextAdapter
 import com.smartfinance.data.onboarding.OnboardingRemoteDataSource
 import com.smartfinance.data.onboarding.OnboardingRepository
 import com.smartfinance.data.onboarding.SupabasePlanAdapter
@@ -19,6 +23,7 @@ import com.smartfinance.data.signin.SignInRepository
 import com.smartfinance.data.signin.SupabaseSignInAdapter
 import com.smartfinance.domain.insights.ComparativeInsightApplicationService
 import com.smartfinance.domain.expenses.ExpenseApplicationService
+import com.smartfinance.domain.location_context.LocationContextApplicationService
 import com.smartfinance.domain.onboarding.OnboardingApplicationService
 import com.smartfinance.domain.onboarding.OnboardingFacade
 import com.smartfinance.domain.register.RegisterApplicationService
@@ -138,6 +143,31 @@ object AppModule {
         repository: ExpenseRepository
     ): ExpenseApplicationService {
         return ExpenseApplicationService(repository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLocationContextRemoteDataSource(
+        supabaseClient: SupabaseClient
+    ): LocationContextRemoteDataSource {
+        return LocationContextRemoteDataSource(supabaseClient)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLocationContextRepository(
+        remoteDataSource: LocationContextRemoteDataSource,
+        preferenceStore: LocationContextPreferenceStore
+    ): LocationContextRepository {
+        return SupabaseLocationContextAdapter(remoteDataSource, preferenceStore)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLocationContextApplicationService(
+        repository: LocationContextRepository
+    ): LocationContextApplicationService {
+        return LocationContextApplicationService(repository)
     }
 
     @Provides

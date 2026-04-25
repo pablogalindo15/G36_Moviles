@@ -49,6 +49,13 @@
     <string name="expense_amount_too_high">The amount is too high. Enter a lower amount.</string>
     <string name="expense_note_too_long">The note can be up to 100 characters.</string>
     <string name="expense_note_sql_like">Remove SQL-like text from the note.</string>
+    <string name="location_permission_denied">Location permission denied. Choose your currency manually.</string>
+    <string name="location_permission_rationale">Allow location to auto-select your currency.</string>
+    <string name="location_permission_action">Allow</string>
+    <string name="location_context_failed">Couldn\'t detect your local currency. Choose it manually.</string>
+    <string name="smart_feature_dialog_title">Savings tip for %1$s</string>
+    <string name="smart_feature_dialog_close">Close</string>
+    <string name="smart_feature_safe_message">The latest inflation data for %1$s is around %2$.1f%% annually. Saving in %1$s looks relatively stable right now.</string>
     <string name="btn_get_started">Comenzar a usar la App</string>
     <string name="top_categories_title">Top categories</string>
     <string name="top_categories_footer">Based on %1$d expenses in the last %2$d days across all SmartFinance users</string>
