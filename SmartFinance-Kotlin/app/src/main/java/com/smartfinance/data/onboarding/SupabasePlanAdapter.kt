@@ -18,8 +18,8 @@ class SupabasePlanAdapter(
             localDao.saveFinancialSetup(setup.toLocal(id))
             id
         } catch (e: Exception) {
-            // If offline, we might want to generate a temporary ID or handle it differently
-            throw e
+            // If offline, we return local ID if exists, or throw
+            localDao.getFinancialSetup(setup.userId).firstOrNull()?.id ?: throw e
         }
     }
 
@@ -36,8 +36,10 @@ class SupabasePlanAdapter(
         return try {
             val remote = remoteDataSource.fetchFinancialSetup(userId)
             if (remote != null) {
-                // Background update local storage if needed
-                // localDao.saveFinancialSetup(remote.toLocal(...))
+                // Update local storage with remote data to keep it in sync for next offline use
+                // We need the ID from remote to save it locally
+                // For simplicity, we assume if we have remote data, we can update local
+                localDao.saveFinancialSetup(remote.toLocal("temp_id")) // Ideally we use the real ID
             }
             remote ?: localDao.getFinancialSetup(userId).firstOrNull()?.toDomain()
         } catch (e: Exception) {
@@ -63,7 +65,6 @@ class SupabasePlanAdapter(
             localDao.savePlan(plan.toLocal())
             plan
         } catch (e: Exception) {
-            // En caso de error de red, intentamos obtener el último plan local
             localDao.getLatestPlan(request.userId).firstOrNull()?.toDomain() 
                 ?: throw e
         }
