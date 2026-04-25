@@ -1,6 +1,10 @@
 package com.smartfinance.feature.plan_insights
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,8 +19,10 @@ import com.google.android.material.snackbar.Snackbar
 import com.smartfinance.R
 import com.smartfinance.core.model.UiState
 import com.smartfinance.databinding.FragmentPlanInsightsBinding
+import com.smartfinance.databinding.ItemTopCategoryBinding
 import com.smartfinance.domain.insights.ComparativeInsightVO
 import com.smartfinance.domain.onboarding.ExistingPlanVO
+import com.smartfinance.domain.plan_insights.TopCategoriesResultVO
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Locale
 import kotlin.math.max
@@ -51,6 +57,7 @@ class InsightsFragment : Fragment() {
         if (userId != null) {
             viewModel.loadExistingPlan(userId)
             viewModel.loadSavingsProjection(false)
+            viewModel.loadTopCategories(false)
             viewModel.loadComparativeInsight()
         } else {
             Snackbar.make(binding.root, "Error: User ID not found", Snackbar.LENGTH_LONG).show()
@@ -66,8 +73,11 @@ class InsightsFragment : Fragment() {
         }
 
         binding.btnRefreshInsights.setOnClickListener {
-            viewModel.refreshSavingsProjection()
-            viewModel.refreshComparativeInsight()
+            viewModel.refreshInsights()
+        }
+
+        binding.btnExportJson.setOnClickListener {
+            viewModel.exportInsightsToJson()
         }
 
         binding.fabAddExpense.setOnClickListener {
@@ -147,8 +157,33 @@ class InsightsFragment : Fragment() {
                 }
 
                 launch {
+                    viewModel.topCategoriesState.collect { state ->
+                        when (state) {
+                            is UiState.Loading -> {
+                                // Potentially show a loading state inside the card
+                            }
+                            is UiState.Success -> {
+                                populateTopCategories(state.data)
+                            }
+                            is UiState.Error -> {
+                                // Handle error
+                            }
+                            else -> Unit
+                        }
+                    }
+                }
+
+                launch {
                     viewModel.comparativeInsightState.collect { state ->
                         renderComparativeInsight(state)
+                    }
+                }
+
+                launch {
+                    viewModel.exportJsonEvent.collect { json ->
+                        Log.d("InsightsFragment", "Exported JSON: $json")
+                        copyToClipboard(json)
+                        Snackbar.make(binding.root, "JSON exported to clipboard & logcat", Snackbar.LENGTH_LONG).show()
                     }
                 }
 
@@ -170,14 +205,51 @@ class InsightsFragment : Fragment() {
             ?.getLiveData<Boolean>("expense_saved")
             ?.observe(viewLifecycleOwner) { wasSaved ->
                 if (wasSaved == true) {
-                    viewModel.refreshSavingsProjection()
-                    viewModel.refreshComparativeInsight()
+                    viewModel.refreshInsights()
                     findNavController().currentBackStackEntry
                         ?.savedStateHandle
                         ?.set("expense_saved", false)
                     Snackbar.make(binding.root, "Expense saved.", Snackbar.LENGTH_SHORT).show()
                 }
             }
+    }
+
+    private fun copyToClipboard(text: String) {
+        val clipboard = context?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val clip = ClipData.newPlainText("Insights JSON", text)
+        clipboard?.setPrimaryClip(clip)
+    }
+
+    private fun populateTopCategories(result: TopCategoriesResultVO) {
+        binding.topCategoriesContainer.removeAllViews()
+
+        if (result.reason == "insufficient_data") {
+            binding.topCategoriesCard.visibility = View.GONE
+            return
+        }
+
+        binding.topCategoriesCard.visibility = View.VISIBLE
+
+        result.topCategories.forEach { categoryVO ->
+            val itemBinding = ItemTopCategoryBinding.inflate(
+                LayoutInflater.from(context),
+                binding.topCategoriesContainer,
+                false
+            )
+
+            itemBinding.tvCategoryName.text = categoryVO.category
+            val percentInt = (categoryVO.percentage * 100).roundToInt()
+            itemBinding.pbCategoryPercentage.progress = percentInt
+            itemBinding.tvCategoryPercentage.text = "$percentInt%"
+
+            binding.topCategoriesContainer.addView(itemBinding.root)
+        }
+
+        binding.tvTopCategoriesFooter.text = getString(
+            R.string.top_categories_footer,
+            result.totalExpenses,
+            result.periodDays
+        )
     }
 
     private fun renderComparativeInsight(state: UiState<ComparativeInsightVO>) {
