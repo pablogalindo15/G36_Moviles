@@ -1,6 +1,8 @@
 package com.smartfinance.data.plan_insights
 
 import com.smartfinance.domain.plan_insights.SavingsProjectionVO
+import com.smartfinance.domain.plan_insights.TopCategoriesResultVO
+import com.smartfinance.domain.plan_insights.TopCategoryVO
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.functions.functions
 import io.ktor.client.statement.bodyAsText
@@ -12,6 +14,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
 import javax.inject.Inject
 
 class PlanRemoteDataSource @Inject constructor(
@@ -32,6 +36,28 @@ class PlanRemoteDataSource @Inject constructor(
         )
     }
 
+    suspend fun getTopCategories(): TopCategoriesResultVO {
+        val response = supabaseClient.functions.invoke("get-bq-top-categories")
+        val body = response.bodyAsText()
+        val json = Json.parseToJsonElement(body).jsonObject
+
+        val topCategories = json["top_categories"]?.jsonArray?.map {
+            val obj = it.jsonObject
+            TopCategoryVO(
+                category = obj.stringValue("category").orEmpty(),
+                count = obj.intValue("count") ?: 0,
+                percentage = obj.doubleValue("percentage") ?: 0.0
+            )
+        } ?: emptyList()
+
+        return TopCategoriesResultVO(
+            totalExpenses = json.intValue("total_expenses") ?: 0,
+            periodDays = json.intValue("period_days") ?: 0,
+            topCategories = topCategories,
+            reason = json.stringValue("reason")
+        )
+    }
+
     private fun JsonObject.booleanValue(vararg keys: String): Boolean? {
         return firstPrimitive(keys)?.booleanOrNull
     }
@@ -46,6 +72,10 @@ class PlanRemoteDataSource @Inject constructor(
 
     private fun JsonObject.stringValue(vararg keys: String): String? {
         return firstPrimitive(keys)?.contentOrNull
+    }
+
+    private fun JsonObject.intValue(vararg keys: String): Int? {
+        return firstPrimitive(keys)?.intOrNull
     }
 
     private fun JsonObject.firstPrimitive(keys: Array<out String>) =

@@ -45,6 +45,12 @@ interface SmartFinanceDao {
     @Query("SELECT * FROM local_comparative_insight WHERE userId = :userId LIMIT 1")
     suspend fun getComparativeInsightCache(userId: String): LocalComparativeInsightCache?
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun saveTopCategoriesCache(cache: LocalTopCategoriesCache)
+
+    @Query("SELECT * FROM local_top_categories WHERE userId = :userId LIMIT 1")
+    suspend fun getTopCategoriesCache(userId: String): LocalTopCategoriesCache?
+
     // Clear data
     @Query("DELETE FROM local_financial_setup WHERE userId = :userId")
     suspend fun clearFinancialSetup(userId: String)
@@ -60,4 +66,7 @@ interface SmartFinanceDao {
 
     @Query("DELETE FROM local_comparative_insight WHERE userId = :userId")
     suspend fun clearComparativeInsightCache(userId: String)
+
+    @Query("DELETE FROM local_top_categories WHERE userId = :userId")
+    suspend fun clearTopCategoriesCache(userId: String)
 }

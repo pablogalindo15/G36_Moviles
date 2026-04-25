@@ -57,4 +57,6 @@
     <string name="smart_feature_dialog_close">Close</string>
     <string name="smart_feature_safe_message">The latest inflation data for %1$s is around %2$.1f%% annually. Saving in %1$s looks relatively stable right now.</string>
     <string name="btn_get_started">Comenzar a usar la App</string>
+    <string name="top_categories_title">Top categories</string>
+    <string name="top_categories_footer">Based on %1$d expenses in the last %2$d days across all SmartFinance users</string>
 </resources>

@@ -8,4 +8,8 @@ class PlanInsightsApplicationService @Inject constructor(
     suspend fun getSavingsProjection(forceRefresh: Boolean = false): SavingsProjectionVO {
         return facade.getSavingsProjection(forceRefresh)
     }
+
+    suspend fun getTopCategories(forceRefresh: Boolean = false): TopCategoriesResultVO {
+        return facade.getTopCategories(forceRefresh)
+    }
 }

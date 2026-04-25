@@ -9,4 +9,8 @@ class PlanInsightsFacade @Inject constructor(
     suspend fun getSavingsProjection(forceRefresh: Boolean = false): SavingsProjectionVO {
         return repository.getSavingsProjection(forceRefresh)
     }
+
+    suspend fun getTopCategories(forceRefresh: Boolean = false): TopCategoriesResultVO {
+        return repository.getTopCategories(forceRefresh)
+    }
 }
