@@ -1,7 +1,6 @@
 package com.smartfinance.core.network
 
 import com.smartfinance.BuildConfig
-import dagger.Provides
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.functions.Functions
@@ -37,5 +36,3 @@ object SupabaseClientProvider {
         }
     }
 }
-
-

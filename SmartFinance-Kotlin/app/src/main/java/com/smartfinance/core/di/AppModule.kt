@@ -1,6 +1,7 @@
 package com.smartfinance.core.di
 
 import com.smartfinance.core.network.SupabaseClientProvider
+import com.smartfinance.data.local.SmartFinanceDao
 import com.smartfinance.data.insights.ComparativeInsightRemoteDataSource
 import com.smartfinance.data.insights.ComparativeInsightRepository
 import com.smartfinance.data.insights.SupabaseComparativeInsightAdapter
@@ -45,9 +46,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOnboardingRepository(
-        remoteDataSource: OnboardingRemoteDataSource
+        remoteDataSource: OnboardingRemoteDataSource,
+        localDao: SmartFinanceDao
     ): OnboardingRepository {
-        return SupabasePlanAdapter(remoteDataSource)
+        return SupabasePlanAdapter(remoteDataSource, localDao)
     }
 
     @Provides
