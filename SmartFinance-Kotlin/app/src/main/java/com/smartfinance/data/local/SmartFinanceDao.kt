@@ -33,6 +33,18 @@ interface SmartFinanceDao {
     @Query("DELETE FROM local_expense WHERE id = :expenseId")
     suspend fun deleteExpense(expenseId: String)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun saveSavingsProjectionCache(cache: LocalSavingsProjectionCache)
+
+    @Query("SELECT * FROM local_savings_projection WHERE userId = :userId LIMIT 1")
+    suspend fun getSavingsProjectionCache(userId: String): LocalSavingsProjectionCache?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun saveComparativeInsightCache(cache: LocalComparativeInsightCache)
+
+    @Query("SELECT * FROM local_comparative_insight WHERE userId = :userId LIMIT 1")
+    suspend fun getComparativeInsightCache(userId: String): LocalComparativeInsightCache?
+
     // Clear data
     @Query("DELETE FROM local_financial_setup WHERE userId = :userId")
     suspend fun clearFinancialSetup(userId: String)
@@ -42,4 +54,10 @@ interface SmartFinanceDao {
 
     @Query("DELETE FROM local_expense WHERE userId = :userId")
     suspend fun clearExpenses(userId: String)
+
+    @Query("DELETE FROM local_savings_projection WHERE userId = :userId")
+    suspend fun clearSavingsProjectionCache(userId: String)
+
+    @Query("DELETE FROM local_comparative_insight WHERE userId = :userId")
+    suspend fun clearComparativeInsightCache(userId: String)
 }

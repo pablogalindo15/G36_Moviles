@@ -6,7 +6,7 @@ class ComparativeInsightApplicationService(
     private val repository: ComparativeInsightRepository
 ) {
 
-    suspend fun fetchWeeklyComparison(): ComparativeInsightVO {
-        return repository.fetchWeeklyComparison()
+    suspend fun fetchWeeklyComparison(forceRefresh: Boolean = false): ComparativeInsightVO {
+        return repository.fetchWeeklyComparison(forceRefresh)
     }
 }

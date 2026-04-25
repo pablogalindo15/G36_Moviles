@@ -35,3 +35,29 @@ data class LocalExpense(
     val description: String,
     val date: String
 )
+
+@Entity(tableName = "local_savings_projection")
+data class LocalSavingsProjectionCache(
+    @PrimaryKey val userId: String,
+    val isOnTrack: Boolean,
+    val projectedSavings: Double,
+    val savingsGoal: Double,
+    val message: String,
+    val computedAt: Long,
+    val cachedAt: Long
+)
+
+@Entity(tableName = "local_comparative_insight")
+data class LocalComparativeInsightCache(
+    @PrimaryKey val userId: String,
+    val type: String,
+    val myWeeklySpending: Double?,
+    val cohortAverageWeeklySpending: Double?,
+    val cohortSize: Int,
+    val percentile: Double?,
+    val currency: String?,
+    val weekStart: String?,
+    val weekEnd: String?,
+    val reason: String?,
+    val cachedAt: Long
+)

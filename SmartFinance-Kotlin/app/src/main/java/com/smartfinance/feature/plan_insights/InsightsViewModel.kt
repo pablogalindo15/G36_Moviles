@@ -8,7 +8,6 @@ import com.smartfinance.domain.insights.ComparativeInsightApplicationService
 import com.smartfinance.domain.insights.ComparativeInsightVO
 import com.smartfinance.domain.onboarding.ExistingPlanVO
 import com.smartfinance.domain.onboarding.OnboardingApplicationService
-import com.smartfinance.domain.onboarding.PlanVO
 import com.smartfinance.domain.plan_insights.PlanInsightsApplicationService
 import com.smartfinance.domain.plan_insights.SavingsProjectionVO
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -73,7 +72,7 @@ class InsightsViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e("InsightsVM", "loadSavingsProjection error", e)
                 _savingsProjectionState.value =
-                    UiState.Error(e.message ?: "Could not load savings projection")
+                    UiState.Error("Couldn't load savings projection.")
             }
         }
     }
@@ -82,12 +81,12 @@ class InsightsViewModel @Inject constructor(
         loadSavingsProjection(forceRefresh = true)
     }
 
-    fun loadComparativeInsight() {
+    fun loadComparativeInsight(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _comparativeInsightState.value = UiState.Loading
             try {
                 _comparativeInsightState.value = UiState.Success(
-                    comparativeInsightApplicationService.fetchWeeklyComparison()
+                    comparativeInsightApplicationService.fetchWeeklyComparison(forceRefresh)
                 )
             } catch (e: Exception) {
                 Log.e("InsightsViewModel", "Failed to load comparative insight", e)
@@ -97,8 +96,9 @@ class InsightsViewModel @Inject constructor(
         }
     }
 
-    private val _signOutState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
-    val signOutState: StateFlow<UiState<Unit>> = _signOutState.asStateFlow()
+    fun refreshComparativeInsight() {
+        loadComparativeInsight(forceRefresh = true)
+    }
 
     fun signOut() {
         viewModelScope.launch {
