@@ -139,39 +139,47 @@ final class DashboardViewModel: ObservableObject {
     }
 
     func exportExpensesToFile() async {
-        exportError = nil
-        exportSuccessURL = nil
-        exportInProgress = true
-        defer { exportInProgress = false }
+            exportError = nil
+            exportSuccessURL = nil
+            exportInProgress = true
 
-        let expenses: [Expense]
-        do {
-            expenses = try await expensesService.fetchMyExpenses()
-        } catch let serviceError as ExpensesServiceError {
-            switch serviceError {
-            case .underlying(let error) where ConnectivitySupport.isConnectivityIssue(error):
-                exportError = ConnectivitySupport.noSavedContentMessage(for: "expenses")
-            default:
+            let expenses: [Expense]
+            do {
+                expenses = try await expensesService.fetchMyExpenses()
+            } catch let serviceError as ExpensesServiceError {
+                switch serviceError {
+                case .underlying(let error) where ConnectivitySupport.isConnectivityIssue(error):
+                    exportError = ConnectivitySupport.noSavedContentMessage(for: "expenses")
+                default:
+                    exportError = "Couldn't fetch expenses to export."
+                }
+                exportInProgress = false
+                return
+            } catch {
                 exportError = "Couldn't fetch expenses to export."
+                exportInProgress = false
+                return
             }
-            return
-        } catch {
-            exportError = "Couldn't fetch expenses to export."
-            return
-        }
 
-        do {
-            let url = try expensesFileAdapter.exportExpenses(
-                expenses,
-                userId: nil,
-                currency: currency.isEmpty ? nil : currency
-            )
-            exportSuccessURL = url
-            lastExportDate = Date()
-        } catch {
-            exportError = "Export failed: \(error.localizedDescription)"
+            let adapter = expensesFileAdapter
+            let exportCurrency = currency.isEmpty ? nil : currency
+
+            DispatchQueue.global(qos: .background).async {
+                do {
+                    let url = try adapter.exportExpenses(expenses, userId: nil, currency: exportCurrency)
+                    DispatchQueue.main.async { [weak self] in
+                        self?.exportSuccessURL = url
+                        self?.lastExportDate = Date()
+                        self?.exportInProgress = false
+                    }
+                } catch {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.exportError = "Export failed: \(error.localizedDescription)"
+                        self?.exportInProgress = false
+                    }
+                }
+            }
         }
-    }
 
     // MARK: - Derived values
 
