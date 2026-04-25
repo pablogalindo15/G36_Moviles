@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartfinance.core.model.UiState
+import com.smartfinance.domain.insights.ComparativeInsightApplicationService
+import com.smartfinance.domain.insights.ComparativeInsightVO
 import com.smartfinance.domain.onboarding.ExistingPlanVO
 import com.smartfinance.domain.onboarding.OnboardingApplicationService
 import com.smartfinance.domain.onboarding.PlanVO
@@ -22,11 +24,9 @@ import javax.inject.Inject
 class InsightsViewModel @Inject constructor(
     private val applicationService: OnboardingApplicationService,
     private val planInsightsApplicationService: PlanInsightsApplicationService,
+    private val comparativeInsightApplicationService: ComparativeInsightApplicationService,
     private val supabase: SupabaseClient
 ) : ViewModel() {
-
-    private val _uiState = MutableStateFlow<UiState<PlanVO>>(UiState.Idle)
-    val uiState: StateFlow<UiState<PlanVO>> = _uiState.asStateFlow()
 
     private val _existingPlanState = MutableStateFlow<UiState<ExistingPlanVO>>(UiState.Idle)
     val existingPlanState: StateFlow<UiState<ExistingPlanVO>> = _existingPlanState.asStateFlow()
@@ -35,6 +35,11 @@ class InsightsViewModel @Inject constructor(
         MutableStateFlow<UiState<SavingsProjectionVO>>(UiState.Idle)
     val savingsProjectionState: StateFlow<UiState<SavingsProjectionVO>> =
         _savingsProjectionState.asStateFlow()
+
+    private val _comparativeInsightState =
+        MutableStateFlow<UiState<ComparativeInsightVO>>(UiState.Idle)
+    val comparativeInsightState: StateFlow<UiState<ComparativeInsightVO>> =
+        _comparativeInsightState.asStateFlow()
 
     private val _signOutState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
     val signOutState: StateFlow<UiState<Unit>> = _signOutState.asStateFlow()
@@ -75,6 +80,21 @@ class InsightsViewModel @Inject constructor(
 
     fun refreshSavingsProjection() {
         loadSavingsProjection(forceRefresh = true)
+    }
+
+    fun loadComparativeInsight() {
+        viewModelScope.launch {
+            _comparativeInsightState.value = UiState.Loading
+            try {
+                _comparativeInsightState.value = UiState.Success(
+                    comparativeInsightApplicationService.fetchWeeklyComparison()
+                )
+            } catch (e: Exception) {
+                Log.e("InsightsViewModel", "Failed to load comparative insight", e)
+                _comparativeInsightState.value =
+                    UiState.Error("Couldn't load spending comparison.")
+            }
+        }
     }
 
     fun signOut() {

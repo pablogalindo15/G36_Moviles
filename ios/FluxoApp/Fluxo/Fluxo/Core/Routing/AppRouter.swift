@@ -7,6 +7,7 @@ final class AppRouter: ObservableObject {
         case loading
         case signIn
         case setupPlan
+        case dashboard
     }
 
     @Published private(set) var root: RootDestination = .loading
@@ -33,6 +34,10 @@ final class AppRouter: ObservableObject {
     func handleSignedIn(_ user: AuthenticatedUser) {
         currentUser = user
         root = .setupPlan
+    }
+
+    func goToDashboard() {
+        root = .dashboard
     }
 
     func signOut() async {

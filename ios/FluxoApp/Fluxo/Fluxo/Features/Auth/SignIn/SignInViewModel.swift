@@ -17,10 +17,10 @@ final class SignInViewModel: ObservableObject {
     }
 
     func signIn() async -> AuthenticatedUser? {
-        // Basic local validation before hitting Supabase Auth.
         errorMessage = nil
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard !trimmedEmail.isEmpty else {
             errorMessage = "Please enter your email."
             return nil
         }
@@ -34,16 +34,19 @@ final class SignInViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            // Real sign-in request to Supabase Auth.
             let user = try await authService.signIn(
                 request: SignInDTO(
-                    email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                    email: trimmedEmail,
                     password: password
                 )
             )
             return user
         } catch {
-            errorMessage = error.localizedDescription
+            if ConnectivitySupport.isConnectivityIssue(error) {
+                errorMessage = ConnectivitySupport.requiresInternetMessage(for: "Sign in")
+            } else {
+                errorMessage = error.localizedDescription
+            }
             return nil
         }
     }

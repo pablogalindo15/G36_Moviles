@@ -2,10 +2,34 @@ import Foundation
 
 final class AuthAdapter {
     private let httpClient: SupabaseHTTPClient
-    private let sessionStore = AuthSessionStore()
+    private let keychain: KeychainAdapter
+    private let sessionStore: AuthSessionStore
 
-    init(httpClient: SupabaseHTTPClient) {
+    private enum KeychainKeys {
+        static let accessToken  = "auth.accessToken"
+        static let refreshToken = "auth.refreshToken"
+    }
+
+    init(httpClient: SupabaseHTTPClient, keychain: KeychainAdapter) {
         self.httpClient = httpClient
+        self.keychain = keychain
+        self.sessionStore = AuthSessionStore(keychain: keychain)
+        runMigrationIfNeeded()
+    }
+
+    /// One-shot migration: moves tokens from the legacy UserDefaults store to Keychain.
+    /// Safe to call on every init — the loop is a no-op once UserDefaults keys are gone.
+    private func runMigrationIfNeeded() {
+        let legacyKeys: [String: String] = [
+            "fluxo.auth.accessToken":  KeychainKeys.accessToken,
+            "fluxo.auth.refreshToken": KeychainKeys.refreshToken
+        ]
+        for (legacyKey, keychainKey) in legacyKeys {
+            if let legacyValue = UserDefaults.standard.string(forKey: legacyKey) {
+                try? keychain.save(legacyValue, forKey: keychainKey)
+                UserDefaults.standard.removeObject(forKey: legacyKey)
+            }
+        }
     }
 
     func signIn(_ dto: SignInDTO) async throws -> AuthenticatedUser {
@@ -89,9 +113,37 @@ final class AuthAdapter {
             let user = try JSONDecoder().decode(AuthUserResponse.self, from: data)
             return AuthenticatedUser(id: user.id, email: user.email)
         } catch {
+            if ConnectivitySupport.isConnectivityIssue(error) {
+                return cachedAuthenticatedUser(from: token)
+            }
             sessionStore.clear()
             return nil
         }
+    }
+
+    func currentUserId() throws -> UUID {
+        guard let rawToken = sessionStore.accessToken else {
+            throw AuthAdapterError.missingSession
+        }
+        let token = normalizeAccessToken(rawToken)
+        let parts = token.split(separator: ".")
+        guard parts.count == 3 else { throw AuthAdapterError.invalidSessionToken }
+
+        var base64 = String(parts[1])
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let remainder = base64.count % 4
+        if remainder > 0 { base64 += String(repeating: "=", count: 4 - remainder) }
+
+        guard
+            let data = Data(base64Encoded: base64),
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let sub = json["sub"] as? String,
+            let uuid = UUID(uuidString: sub)
+        else {
+            throw AuthAdapterError.invalidSessionToken
+        }
+        return uuid
     }
 
     func currentAccessToken() async throws -> String {
@@ -174,6 +226,41 @@ final class AuthAdapter {
         return pieces.count == 3 && token.count > 20
     }
 
+    private func cachedAuthenticatedUser(from token: String) -> AuthenticatedUser? {
+        guard
+            let payload = decodedJWTPayload(token),
+            let sub = payload["sub"] as? String
+        else {
+            return nil
+        }
+
+        let normalizedUserId = UUID(uuidString: sub)?.uuidString.lowercased() ?? sub.lowercased()
+        return AuthenticatedUser(
+            id: normalizedUserId,
+            email: payload["email"] as? String
+        )
+    }
+
+    private func decodedJWTPayload(_ token: String) -> [String: Any]? {
+        let parts = token.split(separator: ".")
+        guard parts.count == 3 else { return nil }
+
+        var base64 = String(parts[1])
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let remainder = base64.count % 4
+        if remainder > 0 { base64 += String(repeating: "=", count: 4 - remainder) }
+
+        guard
+            let data = Data(base64Encoded: base64),
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return nil
+        }
+
+        return json
+    }
+
     private func normalizeAccessToken(_ raw: String) -> String {
         // Defensive normalization because tokens can come with "Bearer " or quotes.
         var token = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -225,26 +312,30 @@ private struct AuthErrorPayload: Decodable {
 }
 
 private final class AuthSessionStore {
-    private let defaults = UserDefaults.standard
-    private let accessTokenKey = "fluxo.auth.accessToken"
-    private let refreshTokenKey = "fluxo.auth.refreshToken"
+    private let keychain: KeychainAdapter
+    private let accessTokenKey  = "auth.accessToken"
+    private let refreshTokenKey = "auth.refreshToken"
+
+    init(keychain: KeychainAdapter) {
+        self.keychain = keychain
+    }
 
     var accessToken: String? {
-        defaults.string(forKey: accessTokenKey)
+        keychain.load(forKey: accessTokenKey)
     }
 
     var refreshToken: String? {
-        defaults.string(forKey: refreshTokenKey)
+        keychain.load(forKey: refreshTokenKey)
     }
 
     func save(accessToken: String, refreshToken: String) {
-        defaults.set(accessToken, forKey: accessTokenKey)
-        defaults.set(refreshToken, forKey: refreshTokenKey)
+        try? keychain.save(accessToken,  forKey: accessTokenKey)
+        try? keychain.save(refreshToken, forKey: refreshTokenKey)
     }
 
     func clear() {
-        defaults.removeObject(forKey: accessTokenKey)
-        defaults.removeObject(forKey: refreshTokenKey)
+        try? keychain.delete(forKey: accessTokenKey)
+        try? keychain.delete(forKey: refreshTokenKey)
     }
 }
 

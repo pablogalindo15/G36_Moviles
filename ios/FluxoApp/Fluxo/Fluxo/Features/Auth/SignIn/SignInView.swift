@@ -1,19 +1,17 @@
 import SwiftUI
 
 struct SignInView: View {
-    private let authService: AuthApplicationService
-    private let cameraFacade: CameraFacade
+    private let createAccountDestination: () -> AnyView
     private let onSignedIn: (AuthenticatedUser) -> Void
 
     @StateObject private var viewModel: SignInViewModel
 
     init(
         authService: AuthApplicationService,
-        cameraFacade: CameraFacade,
+        createAccountDestination: @escaping () -> AnyView,
         onSignedIn: @escaping (AuthenticatedUser) -> Void
     ) {
-        self.authService = authService
-        self.cameraFacade = cameraFacade
+        self.createAccountDestination = createAccountDestination
         self.onSignedIn = onSignedIn
         _viewModel = StateObject(wrappedValue: SignInViewModel(authService: authService))
     }
@@ -129,12 +127,7 @@ struct SignInView: View {
                 .foregroundColor(FluxoTheme.secondaryText)
 
             NavigationLink {
-                CreateAccountView(
-                    authService: authService,
-                    cameraFacade: cameraFacade
-                ) { user in
-                    onSignedIn(user)
-                }
+                createAccountDestination()
             } label: {
                 Text("Create Account")
                     .font(.headline)
