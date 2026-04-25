@@ -133,6 +133,7 @@ class InsightsFragment : Fragment() {
                     }
                 }
 
+                // Observar el estado del Sign Out
                 launch {
                     viewModel.signOutState.collect { state ->
                         if (state is UiState.Success) {

@@ -152,6 +152,17 @@ object AppModule {
 
     @Provides
     @Singleton
+
+    @Provides
+    @Singleton
+    fun provideComparativeInsightRepository(
+        remoteDataSource: ComparativeInsightRemoteDataSource
+    ): ComparativeInsightRepository {
+        return SupabaseComparativeInsightAdapter(remoteDataSource)
+    }
+
+    @Provides
+    @Singleton
     fun provideComparativeInsightApplicationService(
         repository: ComparativeInsightRepository
     ): ComparativeInsightApplicationService {

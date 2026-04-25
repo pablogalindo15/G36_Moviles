@@ -97,6 +97,9 @@ class InsightsViewModel @Inject constructor(
         }
     }
 
+    private val _signOutState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
+    val signOutState: StateFlow<UiState<Unit>> = _signOutState.asStateFlow()
+
     fun signOut() {
         viewModelScope.launch {
             _signOutState.value = UiState.Loading
