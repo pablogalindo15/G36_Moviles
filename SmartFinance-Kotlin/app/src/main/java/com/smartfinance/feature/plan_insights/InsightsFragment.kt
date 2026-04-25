@@ -42,11 +42,11 @@ class InsightsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 1. Obtener el userId de los argumentos (pasado desde SignIn o Onboarding)
         val userId = arguments?.getString("userId")
 
         if (userId != null) {
             viewModel.loadExistingPlan(userId)
+            viewModel.loadSavingsProjection(false)
             viewModel.loadComparativeInsight()
         } else {
             Snackbar.make(binding.root, "Error: User ID not found", Snackbar.LENGTH_LONG).show()
@@ -60,13 +60,16 @@ class InsightsFragment : Fragment() {
         binding.btnSignOut.setOnClickListener {
             viewModel.signOut()
         }
+
+        binding.btnRefreshInsights.setOnClickListener {
+            viewModel.refreshSavingsProjection()
+        }
     }
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
 
-                // Observar el estado del plan existente
                 launch {
                     viewModel.existingPlanState.collect { state ->
                         when (state) {
@@ -77,6 +80,48 @@ class InsightsFragment : Fragment() {
                             is UiState.Error -> {
                                 Snackbar.make(binding.root, state.message, Snackbar.LENGTH_LONG).show()
                             }
+                            else -> Unit
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.savingsProjectionState.collect { state ->
+                        when (state) {
+                            is UiState.Loading -> {
+                                binding.tvSavingsProjectionMessage.text =
+                                    "Loading savings projection..."
+                            }
+
+                            is UiState.Success -> {
+                                val data = state.data
+                                binding.tvSavingsProjectionMessage.text = data.message
+                                binding.tvSavingsProjectionValues.text =
+                                    "Projected: ${
+                                        String.format(
+                                            Locale.US,
+                                            "%.2f",
+                                            data.projectedSavings
+                                        )
+                                    } | Goal: ${
+                                        String.format(
+                                            Locale.US,
+                                            "%.2f",
+                                            data.savingsGoal
+                                        )
+                                    }"
+                            }
+
+                            is UiState.Error -> {
+                                binding.tvSavingsProjectionMessage.text =
+                                    "Couldn't load savings projection."
+                                Snackbar.make(
+                                    binding.root,
+                                    state.message,
+                                    Snackbar.LENGTH_SHORT
+                                ).show()
+                            }
+
                             else -> Unit
                         }
                     }
@@ -180,23 +225,18 @@ class InsightsFragment : Fragment() {
     }
 
     private fun populateUI(existingPlan: ExistingPlanVO) {
-        // 1. Accedemos al objeto plan contenido en el ExistingPlanVO
         val planDetails = existingPlan.plan
-
-        // 2. Usamos la moneda definida en el nivel superior o en el plan
         val currency = existingPlan.currency
 
         with(binding) {
-            // Safe to Spend (Prorrateado)
-            safeToSpendAmount.text = "$currency ${String.format("%.2f", planDetails.proratedSafeToSpend)}"
+            safeToSpendAmount.text =
+                "$currency ${String.format(Locale.US, "%.2f", planDetails.proratedSafeToSpend)}"
 
-            // Weekly Cap (Límite semanal)
-            weeklyCapAmount.text = "$currency ${String.format("%.2f", planDetails.weeklyCap)}"
+            weeklyCapAmount.text =
+                "$currency ${String.format(Locale.US, "%.2f", planDetails.weeklyCap)}"
 
-            // Target Savings (Meta de ahorro)
-            // Nota: Ambos objetos lo tienen, usamos el del plan por consistencia
-            targetSavingsAmount.text = "$currency ${String.format("%.2f", planDetails.monthlySavingsGoal)}"
-
+            targetSavingsAmount.text =
+                "$currency ${String.format(Locale.US, "%.2f", planDetails.monthlySavingsGoal)}"
         }
     }
 

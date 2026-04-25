@@ -18,6 +18,10 @@ import com.smartfinance.domain.onboarding.OnboardingApplicationService
 import com.smartfinance.domain.onboarding.OnboardingFacade
 import com.smartfinance.domain.register.RegisterApplicationService
 import com.smartfinance.domain.register.RegisterFacade
+import com.smartfinance.data.plan_insights.BqRepository
+import com.smartfinance.data.plan_insights.BqRepositoryImpl
+import com.smartfinance.domain.plan_insights.PlanInsightsApplicationService
+import com.smartfinance.domain.plan_insights.PlanInsightsFacade
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -108,11 +112,46 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideBqRepository(
+        repositoryImpl: BqRepositoryImpl
+    ): BqRepository {
+        return repositoryImpl
+    }
+
+    @Provides
+    @Singleton
+    fun providePlanInsightsFacade(
+        repository: BqRepository
+    ): PlanInsightsFacade {
+        return PlanInsightsFacade(repository)
+    }
+
+    @Provides
+    @Singleton
+    fun providePlanInsightsApplicationService(
+        facade: PlanInsightsFacade
+    ): PlanInsightsApplicationService {
+        return PlanInsightsApplicationService(facade)
+    }
+
+    @Provides
+    @Singleton
     fun provideComparativeInsightRemoteDataSource(
         supabaseClient: SupabaseClient
     ): ComparativeInsightRemoteDataSource {
         return ComparativeInsightRemoteDataSource(supabaseClient)
     }
+
+    @Provides
+    @Singleton
+    fun provideComparativeInsightRepository(
+        remoteDataSource: ComparativeInsightRemoteDataSource
+    ): ComparativeInsightRepository {
+        return SupabaseComparativeInsightAdapter(remoteDataSource)
+    }
+
+    @Provides
+    @Singleton
 
     @Provides
     @Singleton
