@@ -17,6 +17,7 @@ import com.smartfinance.databinding.FragmentPlanInsightsBinding
 import com.smartfinance.domain.onboarding.ExistingPlanVO
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @AndroidEntryPoint
 class InsightsFragment : Fragment() {
@@ -38,11 +39,11 @@ class InsightsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 1. Obtener el userId de los argumentos (pasado desde SignIn o Onboarding)
         val userId = arguments?.getString("userId")
 
         if (userId != null) {
             viewModel.loadExistingPlan(userId)
+            viewModel.loadSavingsProjection(false)
         } else {
             Snackbar.make(binding.root, "Error: User ID not found", Snackbar.LENGTH_LONG).show()
         }
@@ -52,9 +53,12 @@ class InsightsFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        // Ejemplo: Si quieres que al tocar el título se cierre sesión
-        binding.tvMainTitle.setOnClickListener {
+        binding.btnSignOut.setOnClickListener {
             viewModel.signOut()
+        }
+
+        binding.btnRefreshInsights.setOnClickListener {
+            viewModel.refreshSavingsProjection()
         }
     }
 
@@ -62,12 +66,11 @@ class InsightsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
 
-                // Observar el estado del plan existente
                 launch {
                     viewModel.existingPlanState.collect { state ->
                         when (state) {
                             is UiState.Loading -> {
-                                // Puedes añadir un ProgressBar en tu XML si gustas
+                                // opcional
                             }
                             is UiState.Success -> {
                                 populateUI(state.data)
@@ -80,7 +83,48 @@ class InsightsFragment : Fragment() {
                     }
                 }
 
-                // Observar el estado del Sign Out
+                launch {
+                    viewModel.savingsProjectionState.collect { state ->
+                        when (state) {
+                            is UiState.Loading -> {
+                                binding.tvSavingsProjectionMessage.text =
+                                    "Loading savings projection..."
+                            }
+
+                            is UiState.Success -> {
+                                val data = state.data
+                                binding.tvSavingsProjectionMessage.text = data.message
+                                binding.tvSavingsProjectionValues.text =
+                                    "Projected: ${
+                                        String.format(
+                                            Locale.US,
+                                            "%.2f",
+                                            data.projectedSavings
+                                        )
+                                    } | Goal: ${
+                                        String.format(
+                                            Locale.US,
+                                            "%.2f",
+                                            data.savingsGoal
+                                        )
+                                    }"
+                            }
+
+                            is UiState.Error -> {
+                                binding.tvSavingsProjectionMessage.text =
+                                    "Couldn't load savings projection."
+                                Snackbar.make(
+                                    binding.root,
+                                    state.message,
+                                    Snackbar.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            else -> Unit
+                        }
+                    }
+                }
+
                 launch {
                     viewModel.signOutState.collect { state ->
                         if (state is UiState.Success) {
@@ -95,24 +139,19 @@ class InsightsFragment : Fragment() {
     }
 
     private fun populateUI(existingPlan: ExistingPlanVO) {
-        // 1. Accedemos al objeto plan contenido en el ExistingPlanVO
         val planDetails = existingPlan.plan
-
-        // 2. Usamos la moneda definida en el nivel superior o en el plan
         val currency = existingPlan.currency
 
         with(binding) {
-            // Safe to Spend (Prorrateado)
-            safeToSpendAmount.text = "$currency ${String.format("%.2f", planDetails.proratedSafeToSpend)}"
+            safeToSpendAmount.text =
+                "$currency ${String.format(Locale.US, "%.2f", planDetails.proratedSafeToSpend)}"
 
-            // Weekly Cap (Límite semanal)
-            weeklyCapAmount.text = "$currency ${String.format("%.2f", planDetails.weeklyCap)}"
+            weeklyCapAmount.text =
+                "$currency ${String.format(Locale.US, "%.2f", planDetails.weeklyCap)}"
 
-            // Target Savings (Meta de ahorro)
-            // Nota: Ambos objetos lo tienen, usamos el del plan por consistencia
-            targetSavingsAmount.text = "$currency ${String.format("%.2f", planDetails.monthlySavingsGoal)}"
+            targetSavingsAmount.text =
+                "$currency ${String.format(Locale.US, "%.2f", planDetails.monthlySavingsGoal)}"
 
-            // Mensaje de Insight
             insightMessage.text = planDetails.contextualInsightMessage
         }
     }
