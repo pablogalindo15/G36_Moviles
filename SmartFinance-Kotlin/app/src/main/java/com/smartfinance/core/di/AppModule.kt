@@ -1,6 +1,9 @@
 package com.smartfinance.core.di
 
 import com.smartfinance.core.network.SupabaseClientProvider
+import com.smartfinance.data.insights.ComparativeInsightRemoteDataSource
+import com.smartfinance.data.insights.ComparativeInsightRepository
+import com.smartfinance.data.insights.SupabaseComparativeInsightAdapter
 import com.smartfinance.data.onboarding.OnboardingRemoteDataSource
 import com.smartfinance.data.onboarding.OnboardingRepository
 import com.smartfinance.data.onboarding.SupabasePlanAdapter
@@ -9,6 +12,7 @@ import com.smartfinance.data.register.RegisterRepository
 import com.smartfinance.data.register.SupabaseRegisterAdapter
 import com.smartfinance.data.signin.SignInRepository
 import com.smartfinance.data.signin.SupabaseSignInAdapter
+import com.smartfinance.domain.insights.ComparativeInsightApplicationService
 import com.smartfinance.domain.onboarding.OnboardingApplicationService
 import com.smartfinance.domain.onboarding.OnboardingFacade
 import com.smartfinance.domain.register.RegisterApplicationService
@@ -100,5 +104,28 @@ object AppModule {
         adapter: SupabaseSignInAdapter
     ): SignInRepository = adapter
 
-}
+    @Provides
+    @Singleton
+    fun provideComparativeInsightRemoteDataSource(
+        supabaseClient: SupabaseClient
+    ): ComparativeInsightRemoteDataSource {
+        return ComparativeInsightRemoteDataSource(supabaseClient)
+    }
 
+    @Provides
+    @Singleton
+    fun provideComparativeInsightRepository(
+        remoteDataSource: ComparativeInsightRemoteDataSource
+    ): ComparativeInsightRepository {
+        return SupabaseComparativeInsightAdapter(remoteDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun provideComparativeInsightApplicationService(
+        repository: ComparativeInsightRepository
+    ): ComparativeInsightApplicationService {
+        return ComparativeInsightApplicationService(repository)
+    }
+
+}
