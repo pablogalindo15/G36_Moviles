@@ -9,9 +9,10 @@ import androidx.room.RoomDatabase
         LocalPlan::class,
         LocalExpense::class,
         LocalSavingsProjectionCache::class,
-        LocalComparativeInsightCache::class
+        LocalComparativeInsightCache::class,
+        LocalTopCategoriesCache::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class SmartFinanceDatabase : RoomDatabase() {

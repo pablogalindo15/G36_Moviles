@@ -50,4 +50,6 @@
     <string name="expense_note_too_long">The note can be up to 100 characters.</string>
     <string name="expense_note_sql_like">Remove SQL-like text from the note.</string>
     <string name="btn_get_started">Comenzar a usar la App</string>
+    <string name="top_categories_title">Top categories</string>
+    <string name="top_categories_footer">Based on %1$d expenses in the last %2$d days across all SmartFinance users</string>
 </resources>

@@ -64,3 +64,13 @@ data class LocalComparativeInsightCache(
     val reason: String?,
     val cachedAt: Long
 )
+
+@Entity(tableName = "local_top_categories")
+data class LocalTopCategoriesCache(
+    @PrimaryKey val userId: String,
+    val totalExpenses: Int,
+    val periodDays: Int,
+    val topCategoriesJson: String, // Stored as JSON string for simplicity
+    val reason: String?,
+    val cachedAt: Long
+)

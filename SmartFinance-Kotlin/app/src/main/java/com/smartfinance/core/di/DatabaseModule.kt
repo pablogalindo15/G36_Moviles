@@ -103,6 +103,24 @@ object DatabaseModule {
         }
     }
 
+    private val migration3To4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS local_top_categories (
+                    userId TEXT NOT NULL,
+                    totalExpenses INTEGER NOT NULL,
+                    periodDays INTEGER NOT NULL,
+                    topCategoriesJson TEXT NOT NULL,
+                    reason TEXT,
+                    cachedAt INTEGER NOT NULL,
+                    PRIMARY KEY(userId)
+                )
+                """.trimIndent()
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SmartFinanceDatabase {
@@ -113,6 +131,7 @@ object DatabaseModule {
         )
             .addMigrations(migration1To2)
             .addMigrations(migration2To3)
+            .addMigrations(migration3To4)
             .build()
     }
 
