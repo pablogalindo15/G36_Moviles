@@ -31,9 +31,12 @@ data class LocalExpense(
     @PrimaryKey val id: String,
     val userId: String,
     val amount: Double,
+    val currency: String,
     val category: String,
-    val description: String,
-    val date: String
+    val note: String?,
+    val occurredAt: String,
+    val createdAt: String,
+    val clientUuid: String
 )
 
 @Entity(tableName = "local_savings_projection")

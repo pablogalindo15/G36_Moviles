@@ -27,7 +27,7 @@ interface SmartFinanceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveExpense(expense: LocalExpense)
 
-    @Query("SELECT * FROM local_expense WHERE userId = :userId ORDER BY date DESC")
+    @Query("SELECT * FROM local_expense WHERE userId = :userId ORDER BY occurredAt DESC")
     fun getExpenses(userId: String): Flow<List<LocalExpense>>
 
     @Query("DELETE FROM local_expense WHERE id = :expenseId")

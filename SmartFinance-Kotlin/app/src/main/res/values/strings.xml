@@ -34,5 +34,20 @@
     <string name="comparison_unavailable">Not enough similar users yet.</string>
     <string name="comparison_user_label">You</string>
     <string name="comparison_cohort_label">Cohort avg</string>
+    <string name="add_expense">Add expense</string>
+    <string name="expense_cancel">Cancel</string>
+    <string name="log_expense_title">Log expense</string>
+    <string name="expense_amount_label">Amount</string>
+    <string name="expense_amount_hint">0.00</string>
+    <string name="expense_category_label">Category</string>
+    <string name="expense_category_error">Choose a category.</string>
+    <string name="expense_note_label">Note (optional)</string>
+    <string name="expense_note_hint">What was it for?</string>
+    <string name="expense_date_label">Date</string>
+    <string name="expense_save">Save expense</string>
+    <string name="expense_amount_error">Enter an amount greater than zero.</string>
+    <string name="expense_amount_too_high">The amount is too high. Enter a lower amount.</string>
+    <string name="expense_note_too_long">The note can be up to 100 characters.</string>
+    <string name="expense_note_sql_like">Remove SQL-like text from the note.</string>
     <string name="btn_get_started">Comenzar a usar la App</string>
 </resources>
