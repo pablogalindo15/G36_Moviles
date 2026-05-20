@@ -53,6 +53,15 @@ final class LocalStore {
         return ((try? context.fetch(descriptor)) ?? []).map { $0.toDTO() }
     }
 
+    func deleteExpense(id: UUID) {
+        let predicate = #Predicate<LocalExpense> { $0.id == id }
+        let descriptor = FetchDescriptor<LocalExpense>(predicate: predicate)
+
+        guard let existing = try? context.fetch(descriptor).first else { return }
+        context.delete(existing)
+        try? context.save()
+    }
+
     // MARK: - Plan
 
     func saveSetup(_ setup: FinancialSetupRow) {
