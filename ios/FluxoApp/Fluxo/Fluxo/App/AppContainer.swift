@@ -11,6 +11,7 @@ final class AppContainer: ObservableObject {
     let comparativeSpendingService: ComparativeSpendingService
     let topCategoriesService: TopCategoriesService
     let savingsProjectionService: SavingsProjectionService
+    let insightsService: InsightsApplicationService
     let localStore: LocalStore
     let planSnapshotCache: PlanSnapshotMemoryCache
     let cameraFacade: CameraFacade
@@ -81,6 +82,11 @@ final class AppContainer: ObservableObject {
             functionsAdapter: functionsAdapter,
             authAdapter: authAdapter
         )
+        let insightsService = InsightsApplicationService(
+            functionsAdapter: functionsAdapter,
+            authAdapter: authAdapter,
+            localStore: localStore
+        )
 
         self.config = config
         self.authService = authService
@@ -89,6 +95,7 @@ final class AppContainer: ObservableObject {
         self.comparativeSpendingService = comparativeSpendingService
         self.topCategoriesService = topCategoriesService
         self.savingsProjectionService = savingsProjectionService
+        self.insightsService = insightsService
         self.localStore = localStore
         self.planSnapshotCache = planSnapshotCache
         self.cameraFacade = CameraFacade()

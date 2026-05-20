@@ -30,6 +30,11 @@ struct MainTabView: View {
                     )
                 }
             }
+            Tab("Insights", systemImage: "chart.line.uptrend.xyaxis", value: 2) {
+                InsightsView(
+                    viewModel: InsightsViewModel(insightsService: container.insightsService)
+                )
+            }
         }
     }
 }

@@ -11,7 +11,8 @@ final class LocalStore {
             container = try ModelContainer(
                 for: LocalExpense.self,
                 LocalPlan.self,
-                LocalFinancialSetup.self
+                LocalFinancialSetup.self,
+                InsightSnapshot.self
             )
         } catch {
             fatalError("Failed to initialize SwiftData ModelContainer: \(error)")
@@ -119,6 +120,39 @@ final class LocalStore {
         return (try? context.fetch(descriptor))?.first?.toDTO()
     }
 
+    // MARK: - Insight Snapshots
+
+    func saveInsightSnapshot(bqType: String, userId: UUID, payload: Data) {
+        let predicate = #Predicate<InsightSnapshot> {
+            $0.bqType == bqType && $0.userId == userId
+        }
+        let descriptor = FetchDescriptor<InsightSnapshot>(predicate: predicate)
+        if let existing = try? context.fetch(descriptor).first {
+            existing.payload = payload
+            existing.computedAt = Date()
+        } else {
+            context.insert(InsightSnapshot(bqType: bqType, userId: userId, payload: payload))
+        }
+        try? context.save()
+    }
+
+    func fetchInsightSnapshot(bqType: String, userId: UUID) -> InsightSnapshot? {
+        let predicate = #Predicate<InsightSnapshot> {
+            $0.bqType == bqType && $0.userId == userId
+        }
+        let descriptor = FetchDescriptor<InsightSnapshot>(predicate: predicate)
+        return try? context.fetch(descriptor).first
+    }
+
+    func deleteExpiredInsightSnapshots(olderThan date: Date) {
+        let predicate = #Predicate<InsightSnapshot> { $0.computedAt < date }
+        let descriptor = FetchDescriptor<InsightSnapshot>(predicate: predicate)
+        if let stale = try? context.fetch(descriptor) {
+            for s in stale { context.delete(s) }
+        }
+        try? context.save()
+    }
+
     // MARK: - Sign out cleanup
 
     func clearAll() {
@@ -130,6 +164,9 @@ final class LocalStore {
         }
         if let setups = try? context.fetch(FetchDescriptor<LocalFinancialSetup>()) {
             for s in setups { context.delete(s) }
+        }
+        if let snapshots = try? context.fetch(FetchDescriptor<InsightSnapshot>()) {
+            for s in snapshots { context.delete(s) }
         }
         try? context.save()
     }

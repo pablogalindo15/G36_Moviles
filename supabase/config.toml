@@ -391,3 +391,12 @@ verify_jwt = false
 
 [functions.get-bq-savings-projection]
 verify_jwt = false
+
+[functions.get-bq-category-cycle-comparison]
+verify_jwt = false
+
+[functions.get-bq-category-streaks]
+verify_jwt = false
+
+[functions.get-bq-biggest-expense-of-cycle]
+verify_jwt = false
