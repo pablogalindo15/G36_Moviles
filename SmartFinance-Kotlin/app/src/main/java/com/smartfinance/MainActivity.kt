@@ -44,23 +44,21 @@ class MainActivity : AppCompatActivity() {
 
             if (sessionStatus is SessionStatus.Authenticated) {
                 val userId = sessionStatus.session.user?.id ?: ""
-                
-                // Verificamos si ya tiene un plan generado
+
                 val existingPlan = onboardingFacade.fetchGeneratedPlan(userId)
-                
+
                 val navGraph = navController.navInflater.inflate(R.navigation.nav_graph)
-                
+
                 if (existingPlan != null) {
-                    // Si tiene plan, va a Insights
                     navGraph.setStartDestination(R.id.insightsFragment)
                 } else {
-                    // Si no tiene plan, va a Onboarding
                     navGraph.setStartDestination(R.id.onboardingFragment)
                 }
-                
+
                 val bundle = Bundle().apply {
                     putString("userId", userId)
                 }
+
                 navController.setGraph(navGraph, bundle)
             }
         }
@@ -71,8 +69,10 @@ class MainActivity : AppCompatActivity() {
             R.id.signInFragment,
             R.id.registerFragment,
             R.id.onboardingFragment,
-            R.id.logExpenseFragment
+            R.id.logExpenseFragment,
+            R.id.expenseDetailFragment
         )
+
         navController.addOnDestinationChangedListener { _, destination, _ ->
             binding.bottomNav.visibility =
                 if (destination.id in hideNavDestinations) View.GONE else View.VISIBLE
