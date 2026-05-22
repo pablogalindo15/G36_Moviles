@@ -147,9 +147,15 @@ class MyExpensesViewModel @Inject constructor(
     }
 
     private fun ExpenseVO.toUiModel(): ExpenseItemUiModel {
+        // Mapeamos utilities -> Bills para el usuario
+        val displayCategory = when(category.lowercase()) {
+            "utilities" -> "Bills"
+            else -> category.replaceFirstChar { it.titlecase(Locale.getDefault()) }
+        }
+
         return ExpenseItemUiModel(
             id = id,
-            category = category,
+            category = displayCategory,
             note = note?.ifBlank { "No note" } ?: "No note",
             dateText = formatDate(occurredAt),
             amountText = "${currency.uppercase()} ${String.format(Locale.US, "%.2f", amount)}",
@@ -180,10 +186,11 @@ class MyExpensesViewModel @Inject constructor(
     private fun getIconForCategory(category: String): String {
         return when (category.lowercase()) {
             "transport", "transportation", "taxi", "uber" -> "🚗"
-            "food", "restaurant", "groceries" -> "🍽️"
+            "food", "restaurant", "groceries" -> "🍴"
             "shopping" -> "🛍️"
             "health" -> "🩺"
-            "entertainment" -> "🎬"
+            "entertainment" -> "🎮"
+            "utilities", "bills" -> "💡"
             else -> "💸"
         }
     }

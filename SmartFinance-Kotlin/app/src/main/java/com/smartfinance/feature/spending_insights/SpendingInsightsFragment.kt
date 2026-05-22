@@ -23,6 +23,7 @@ class SpendingInsightsFragment : Fragment() {
 
     private val viewModel: SpendingInsightsViewModel by viewModels()
     private val categoryInsightsAdapter = CategoryInsightsAdapter()
+    private val streaksAdapter = CategoryStreaksAdapter()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -34,7 +35,7 @@ class SpendingInsightsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        setupRecyclerView()
+        setupRecyclerViews()
         observeUiState()
     }
 
@@ -43,11 +44,17 @@ class SpendingInsightsFragment : Fragment() {
         viewModel.loadInsights()
     }
 
-    private fun setupRecyclerView() {
+    private fun setupRecyclerViews() {
         binding.categoryInsightsRecyclerView.apply {
             adapter = categoryInsightsAdapter
             layoutManager = LinearLayoutManager(requireContext())
-            setHasFixedSize(false)
+            isNestedScrollingEnabled = false
+        }
+
+        binding.streaksRecyclerView.apply {
+            adapter = streaksAdapter
+            layoutManager = LinearLayoutManager(requireContext())
+            isNestedScrollingEnabled = false
         }
     }
 
@@ -63,16 +70,23 @@ class SpendingInsightsFragment : Fragment() {
 
     private fun renderState(state: SpendingInsightsUiState) {
         binding.insightsProgressBar.isVisible = state.isLoading
-
         binding.insightsErrorTextView.isVisible = state.errorMessage != null
         binding.insightsErrorTextView.text = state.errorMessage
 
-        binding.emptyInsightsTextView.isVisible =
-            !state.isLoading &&
-                    state.errorMessage == null &&
-                    state.topCategories.isEmpty()
+        // Control de visibilidad de las tarjetas
+        val hasCategories = state.topCategories.isNotEmpty()
+        val hasStreaks = state.streaks.isNotEmpty()
 
+        binding.topCategoriesCard.isVisible = !state.isLoading && hasCategories
         categoryInsightsAdapter.submitList(state.topCategories)
+
+        binding.streaksCard.isVisible = !state.isLoading && hasStreaks
+        binding.streaksDescriptionTextView.text = state.evaluatedAtText
+        streaksAdapter.submitList(state.streaks)
+
+        // Estado vacío global
+        binding.emptyInsightsTextView.isVisible = 
+            !state.isLoading && state.errorMessage == null && !hasCategories && !hasStreaks
     }
 
     override fun onDestroyView() {

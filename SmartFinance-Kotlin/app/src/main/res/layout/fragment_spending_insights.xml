@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -34,6 +35,26 @@
             android:textColor="#6B7280"
             android:textSize="14sp" />
 
+        <ProgressBar
+            android:id="@+id/insightsProgressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="40dp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/insightsErrorTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:textColor="#B00020"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <!-- Spending by Category Card -->
         <LinearLayout
             android:id="@+id/topCategoriesCard"
             android:layout_width="match_parent"
@@ -41,10 +62,11 @@
             android:layout_marginTop="22dp"
             android:background="@drawable/bg_expense_item"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="18dp"
+            android:visibility="gone"
+            tools:visibility="visible">
 
             <TextView
-                android:id="@+id/topCategoriesTitleTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Spending by category"
@@ -53,40 +75,12 @@
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/topCategoriesDescriptionTextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="Categories ranked by total spending this month."
                 android:textColor="#6B7280"
                 android:textSize="13sp" />
-
-            <ProgressBar
-                android:id="@+id/insightsProgressBar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginTop="20dp"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/insightsErrorTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:textColor="#B00020"
-                android:textSize="14sp"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/emptyInsightsTextView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:text="No expenses found for this month yet."
-                android:textColor="#6B7280"
-                android:textSize="14sp"
-                android:visibility="gone" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/categoryInsightsRecyclerView"
@@ -95,9 +89,57 @@
                 android:layout_marginTop="18dp"
                 android:nestedScrollingEnabled="false"
                 tools:listitem="@layout/item_category_insight" />
-
         </LinearLayout>
 
-    </LinearLayout>
+        <!-- Spending Streaks Card (NUEVO) -->
+        <LinearLayout
+            android:id="@+id/streaksCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/bg_expense_item"
+            android:orientation="vertical"
+            android:padding="18dp"
+            android:visibility="gone"
+            tools:visibility="visible">
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Spending streaks"
+                android:textColor="#111827"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/streaksDescriptionTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Days without spending"
+                android:textColor="#6B7280"
+                android:textSize="13sp"
+                tools:text="Days without spending · 20 May 2026" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/streaksRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:nestedScrollingEnabled="false"
+                tools:listitem="@layout/item_category_streak" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/emptyInsightsTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:gravity="center"
+            android:text="No data found for this month yet."
+            android:textColor="#6B7280"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+    </LinearLayout>
 </ScrollView>

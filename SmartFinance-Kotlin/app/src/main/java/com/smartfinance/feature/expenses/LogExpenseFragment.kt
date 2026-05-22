@@ -373,6 +373,6 @@ class LogExpenseFragment : Fragment() {
         )
         val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
         val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
-        val CATEGORY_OPTIONS = listOf("Food", "Transport", "Entertainment", "Bills", "Shopping", "Other")
+        val CATEGORY_OPTIONS = listOf("Food", "Transport", "Entertainment", "Health", "Shopping", "Bills", "Other")
     }
 }
