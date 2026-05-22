@@ -26,3 +26,21 @@ data class TopSpendingCategoryRecord(
     @SerialName("percentage")
     val percentage: Double = 0.0
 )
+
+@Serializable
+data class CategoryStreaksResponse(
+    @SerialName("evaluated_at")
+    val evaluatedAt: String,
+    @SerialName("streaks")
+    val streaks: List<CategoryStreakRecord>
+)
+
+@Serializable
+data class CategoryStreakRecord(
+    @SerialName("category")
+    val category: String,
+    @SerialName("days_since_last")
+    val daysSinceLast: Int,
+    @SerialName("capped")
+    val capped: Boolean
+)

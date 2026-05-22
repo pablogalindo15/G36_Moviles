@@ -11,7 +11,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
-import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -49,7 +48,6 @@ class InsightsFragment : Fragment() {
         LocationServices.getFusedLocationProviderClient(requireActivity())
     }
 
-    private var currentUserId: String? = null
     private var currentCurrency: String? = null
     private var smartFeatureDialogVisible = false
 
@@ -65,19 +63,8 @@ class InsightsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val userId = arguments?.getString("userId")
-        currentUserId = userId
-
-        if (userId != null) {
-            viewModel.loadExistingPlan(userId)
-            viewModel.loadSavingsProjection(false)
-            viewModel.loadTopCategories(false)
-            viewModel.loadComparativeInsight()
-            viewModel.loadSmartFeatureContext()
-            resolveSmartFeatureContextIfNeeded()
-        } else {
-            Snackbar.make(binding.root, "Error: User ID not found", Snackbar.LENGTH_LONG).show()
-        }
+        viewModel.loadAllData()
+        resolveSmartFeatureContextIfNeeded()
 
         setupListeners()
         observeViewModel()
@@ -94,25 +81,6 @@ class InsightsFragment : Fragment() {
 
         binding.btnExportJson.setOnClickListener {
             viewModel.exportInsightsToJson()
-        }
-
-        binding.fabAddExpense.setOnClickListener {
-            val userId = currentUserId
-            val currency = currentCurrency
-
-            if (userId.isNullOrBlank() || currency.isNullOrBlank()) {
-                Snackbar.make(binding.root, "Plan data is still loading.", Snackbar.LENGTH_SHORT)
-                    .show()
-                return@setOnClickListener
-            }
-
-            findNavController().navigate(
-                R.id.action_insights_to_logExpense,
-                bundleOf(
-                    "userId" to userId,
-                    "currency" to currency
-                )
-            )
         }
     }
 

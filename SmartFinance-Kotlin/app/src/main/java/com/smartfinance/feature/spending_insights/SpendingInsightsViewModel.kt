@@ -1,10 +1,17 @@
 package com.smartfinance.feature.spending_insights
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.smartfinance.data.insights.SpendingInsightsRemoteDataSource
-import com.smartfinance.data.insights.TopSpendingCategoryRecord
+import com.smartfinance.domain.expenses.ExpenseApplicationService
+import com.smartfinance.domain.onboarding.OnboardingApplicationService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.auth
+import java.time.OffsetDateTime
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +23,9 @@ import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class SpendingInsightsViewModel @Inject constructor(
-    private val remoteDataSource: SpendingInsightsRemoteDataSource
+    private val expenseService: ExpenseApplicationService,
+    private val onboardingService: OnboardingApplicationService,
+    private val supabase: SupabaseClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SpendingInsightsUiState())
@@ -24,57 +33,111 @@ class SpendingInsightsViewModel @Inject constructor(
 
     fun loadInsights() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                isLoading = true,
-                errorMessage = null
-            )
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
             try {
-                val insights = withContext(Dispatchers.IO) {
-                    val response = remoteDataSource.getTopSpendingCategories()
+                val userId = supabase.auth.currentUserOrNull()?.id
+                    ?: throw IllegalStateException("User not authenticated")
 
-                    buildUiModels(response.topCategories)
+                // Obtenemos los gastos directamente (Tiempo Real / Postgres)
+                val allExpenses = withContext(Dispatchers.IO) {
+                    expenseService.getExpensesByUser(userId)
                 }
+                
+                val existingPlan = withContext(Dispatchers.IO) {
+                    onboardingService.fetchExistingPlan(userId)
+                }
+                val userCurrency = existingPlan?.currency ?: "USD"
+
+                if (allExpenses.isEmpty()) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false, 
+                        topCategories = emptyList(), 
+                        streaks = emptyList(),
+                        evaluatedAtText = null
+                    )
+                    return@launch
+                }
+
+                // 1. Spending by Category (Mes actual)
+                val currentMonth = YearMonth.now()
+                val currentMonthExpenses = allExpenses.filter { 
+                    try {
+                        val date = OffsetDateTime.parse(it.occurredAt)
+                        YearMonth.from(date) == currentMonth
+                    } catch (e: Exception) { false }
+                }
+                
+                val totalByCat = currentMonthExpenses.groupBy { it.category.lowercase().trim() }
+                    .mapValues { entry -> entry.value.sumOf { it.amount } }
+                
+                val totalSpent = totalByCat.values.sum()
+                val topCategories = totalByCat.entries
+                    .sortedByDescending { it.value }
+                    .map { (cat, amount) ->
+                        CategoryInsightUiModel(
+                            category = formatCategoryName(cat),
+                            amountText = "$userCurrency ${String.format(Locale.US, "%,.0f", amount)}",
+                            percentage = if (totalSpent > 0) ((amount / totalSpent) * 100).toInt().coerceIn(1, 100) else 0,
+                            icon = getIconForCategory(cat)
+                        )
+                    }
+
+                // 2. Streaks (Tiempo Real - Solo categorías con gastos reales)
+                val now = OffsetDateTime.now()
+                val streaks = allExpenses.groupBy { it.category.lowercase().trim() }
+                    .map { (cat, expenses) ->
+                        val latest = expenses.map { OffsetDateTime.parse(it.occurredAt) }.maxOrNull()
+                        val days = if (latest != null) {
+                            val d = ChronoUnit.DAYS.between(latest, now).toInt()
+                            if (d < 0) 0 else d
+                        } else 30
+                        
+                        cat to days
+                    }
+                    .sortedByDescending { it.second } // Días más altos primero
+                    .take(5)
+                    .map { (cat, days) ->
+                        CategoryStreakUiModel(
+                            category = formatCategoryName(cat),
+                            daysText = "$days days",
+                            icon = getIconForCategory(cat)
+                        )
+                    }
+
+                val evaluatedAtText = "Days without spending · ${now.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.US))}"
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    topCategories = insights
+                    topCategories = topCategories,
+                    streaks = streaks,
+                    evaluatedAtText = evaluatedAtText
                 )
+
             } catch (exception: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = exception.message ?: "Could not load insights."
+                    errorMessage = "Could not load insights."
                 )
             }
         }
     }
 
-    private fun buildUiModels(
-        categories: List<TopSpendingCategoryRecord>
-    ): List<CategoryInsightUiModel> {
-        return categories
-            .sortedByDescending { item -> item.total }
-            .map { item ->
-                CategoryInsightUiModel(
-                    category = item.category,
-                    amountText = "COP ${String.format(Locale.US, "%,.0f", item.total)}",
-                    percentage = (item.percentage * 100).toInt().coerceIn(1, 100),
-                    icon = getIconForCategory(item.category)
-                )
-            }
+    private fun formatCategoryName(category: String): String {
+        return when(category.lowercase().trim()) {
+            "utilities", "bills" -> "Bills"
+            else -> category.trim().replaceFirstChar { it.titlecase(Locale.getDefault()) }
+        }
     }
 
     private fun getIconForCategory(category: String): String {
-        return when (category.lowercase()) {
-            "transport", "transportation", "taxi", "uber" -> "🚗"
-            "food", "restaurant", "groceries" -> "🍽️"
+        return when (category.lowercase().trim()) {
+            "transport", "transportation" -> "🚗"
+            "food", "restaurant", "groceries" -> "🍴"
             "shopping" -> "🛍️"
             "health" -> "🩺"
-            "entertainment" -> "🎬"
-            "education" -> "🎓"
-            "housing" -> "🏠"
-            "utilities" -> "💡"
-            "bills" -> "💸"
+            "entertainment" -> "🎮"
+            "utilities", "bills" -> "💡"
             else -> "💸"
         }
     }

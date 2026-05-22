@@ -23,4 +23,13 @@ class SpendingInsightsRemoteDataSource @Inject constructor(
 
         return json.decodeFromString<TopSpendingCategoriesResponse>(jsonString)
     }
+
+    suspend fun getCategoryStreaks(): CategoryStreaksResponse {
+        val response = supabaseClient.functions.invoke(
+            "get-bq-category-streaks"
+        )
+        val jsonString = response.bodyAsText()
+        Log.d("CategoryStreaks", "Response: $jsonString")
+        return json.decodeFromString<CategoryStreaksResponse>(jsonString)
+    }
 }

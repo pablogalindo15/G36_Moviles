@@ -1,6 +1,7 @@
 package com.smartfinance.domain.expenses
 
 import com.smartfinance.data.expenses.ExpenseRepository
+import java.util.Locale
 
 class ExpenseApplicationService(
     private val repository: ExpenseRepository
@@ -22,10 +23,16 @@ class ExpenseApplicationService(
             "Remove SQL-like text from the note."
         }
 
+        // Normalizamos la categoría para que coincida con lo que espera el Backend/Edge Functions
+        val normalizedCategory = when (request.category.trim().lowercase(Locale.US)) {
+            "bills" -> "utilities"
+            else -> request.category.trim().lowercase(Locale.US)
+        }
+
         return repository.logExpense(
             request.copy(
                 currency = request.currency.trim().uppercase(),
-                category = request.category.trim(),
+                category = normalizedCategory,
                 note = cleanNote
             )
         )
@@ -53,9 +60,14 @@ class ExpenseApplicationService(
             "Remove SQL-like text from the note."
         }
 
+        val normalizedCategory = when (request.category.trim().lowercase(Locale.US)) {
+            "bills" -> "utilities"
+            else -> request.category.trim().lowercase(Locale.US)
+        }
+
         return repository.updateExpense(
             request.copy(
-                category = request.category.trim(),
+                category = normalizedCategory,
                 note = cleanNote
             )
         )
