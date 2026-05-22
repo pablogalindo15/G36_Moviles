@@ -47,7 +47,7 @@
                 android:id="@+id/topCategoriesTitleTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Top spending categories"
+                android:text="Spending by category"
                 android:textColor="#111827"
                 android:textSize="18sp"
                 android:textStyle="bold" />
