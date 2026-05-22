@@ -28,6 +28,9 @@ class MyExpensesViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MyExpensesUiState())
     val uiState: StateFlow<MyExpensesUiState> = _uiState.asStateFlow()
 
+    val currentUserId: String?
+        get() = supabaseClient.auth.currentUserOrNull()?.id
+
     fun loadExpenses() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
@@ -37,7 +40,7 @@ class MyExpensesViewModel @Inject constructor(
 
             try {
                 val expenses = withContext(Dispatchers.IO) {
-                    val userId = supabaseClient.auth.currentUserOrNull()?.id
+                    val userId = currentUserId
                         ?: throw IllegalStateException("Missing user session.")
 
                     expenseApplicationService

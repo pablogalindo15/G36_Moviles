@@ -69,9 +69,6 @@
         android:label="Insights"
         tools:layout="@layout/fragment_plan_insights">
         <action
-            android:id="@+id/action_insights_to_logExpense"
-            app:destination="@id/logExpenseFragment" />
-        <action
             android:id="@+id/action_planResult_to_signIn"
             app:destination="@id/signInFragment"
             app:popUpTo="@id/nav_graph"
@@ -87,6 +84,10 @@
         <action
             android:id="@+id/action_myExpenses_to_expenseDetail"
             app:destination="@id/expenseDetailFragment" />
+
+        <action
+            android:id="@+id/action_myExpenses_to_logExpense"
+            app:destination="@id/logExpenseFragment" />
 
     </fragment>
 
@@ -143,8 +144,5 @@
             app:argType="string" />
 
     </fragment>
-
-
-
 
 </navigation>
