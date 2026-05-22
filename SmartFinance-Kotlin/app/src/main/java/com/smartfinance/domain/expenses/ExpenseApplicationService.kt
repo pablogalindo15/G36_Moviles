@@ -31,6 +31,42 @@ class ExpenseApplicationService(
         )
     }
 
+    suspend fun getExpensesByUser(userId: String): List<ExpenseVO> {
+        require(userId.isNotBlank()) { "Missing user id" }
+
+        return repository.getExpensesByUser(userId)
+    }
+
+    suspend fun updateExpense(request: UpdateExpenseRequestDTO): ExpenseVO {
+        require(request.expenseId.isNotBlank()) { "Missing expense id" }
+        require(request.category.isNotBlank()) { "Category is required" }
+        require(request.amount > 0.0) { "Amount must be greater than zero" }
+        require(request.amount <= MAX_AMOUNT) { "The amount is too high. Enter a lower amount." }
+
+        val cleanNote = request.note.trim()
+
+        require(cleanNote.length <= MAX_NOTE_LENGTH) {
+            "The note can be up to $MAX_NOTE_LENGTH characters."
+        }
+
+        require(!SQL_LIKE_PATTERN.containsMatchIn(cleanNote)) {
+            "Remove SQL-like text from the note."
+        }
+
+        return repository.updateExpense(
+            request.copy(
+                category = request.category.trim(),
+                note = cleanNote
+            )
+        )
+    }
+
+    suspend fun deleteExpense(expenseId: String) {
+        require(expenseId.isNotBlank()) { "Missing expense id" }
+
+        repository.deleteExpense(expenseId)
+    }
+
     private companion object {
         const val MAX_AMOUNT = 10_000_000.0
         const val MAX_NOTE_LENGTH = 100

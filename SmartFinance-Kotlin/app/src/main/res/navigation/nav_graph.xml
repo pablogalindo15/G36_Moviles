@@ -79,6 +79,18 @@
     </fragment>
 
     <fragment
+        android:id="@+id/myExpensesFragment"
+        android:name="com.smartfinance.feature.expenses.MyExpensesFragment"
+        android:label="My expenses"
+        tools:layout="@layout/fragment_my_expenses">
+
+        <action
+            android:id="@+id/action_myExpenses_to_expenseDetail"
+            app:destination="@id/expenseDetailFragment" />
+
+    </fragment>
+
+    <fragment
         android:id="@+id/logExpenseFragment"
         android:name="com.smartfinance.feature.expenses.LogExpenseFragment"
         android:label="Log expense"
@@ -89,6 +101,47 @@
         <argument
             android:name="currency"
             app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/spendingInsightsFragment"
+        android:name="com.smartfinance.feature.spending_insights.SpendingInsightsFragment"
+        android:label="Insights"
+        tools:layout="@layout/fragment_spending_insights" />
+
+    <fragment
+        android:id="@+id/expenseDetailFragment"
+        android:name="com.smartfinance.feature.expenses.ExpenseDetailFragment"
+        android:label="Expense detail"
+        tools:layout="@layout/fragment_expense_detail">
+
+        <argument
+            android:name="category"
+            app:argType="string" />
+
+        <argument
+            android:name="amount"
+            app:argType="string" />
+
+        <argument
+            android:name="note"
+            app:argType="string" />
+
+        <argument
+            android:name="date"
+            app:argType="string" />
+
+        <argument
+            android:name="icon"
+            app:argType="string" />
+        <argument
+            android:name="id"
+            app:argType="string" />
+
+        <argument
+            android:name="occurredAt"
+            app:argType="string" />
+
     </fragment>
 
 

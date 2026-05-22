@@ -6,6 +6,7 @@ import com.smartfinance.data.local.toDomain
 import com.smartfinance.data.local.toLocal
 import com.smartfinance.domain.expenses.ExpenseVO
 import com.smartfinance.domain.expenses.LogExpenseRequestDTO
+import com.smartfinance.domain.expenses.UpdateExpenseRequestDTO
 import java.time.ZoneId
 import java.util.UUID
 
@@ -32,5 +33,22 @@ class SupabaseExpenseAdapter(
 
         localDao.saveExpense(remoteExpense.toLocal())
         return remoteExpense.toDomain()
+    }
+    override suspend fun getExpensesByUser(userId: String): List<ExpenseVO> {
+        val remoteExpenses = remoteDataSource.getExpensesByUser(userId)
+
+        return remoteExpenses.map { remoteExpense ->
+            remoteExpense.toDomain()
+        }
+    }
+
+    override suspend fun updateExpense(request: UpdateExpenseRequestDTO): ExpenseVO {
+        val updatedExpense = remoteDataSource.updateExpense(request)
+
+        return updatedExpense.toDomain()
+    }
+
+    override suspend fun deleteExpense(expenseId: String) {
+        remoteDataSource.deleteExpense(expenseId)
     }
 }
