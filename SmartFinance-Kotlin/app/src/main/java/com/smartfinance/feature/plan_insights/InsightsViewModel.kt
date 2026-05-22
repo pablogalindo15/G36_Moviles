@@ -70,6 +70,22 @@ class InsightsViewModel @Inject constructor(
     private val _exportJsonEvent = MutableSharedFlow<String>()
     val exportJsonEvent: SharedFlow<String> = _exportJsonEvent.asSharedFlow()
 
+    val currentUserId: String?
+        get() = supabase.auth.currentUserOrNull()?.id
+
+    fun loadAllData() {
+        val userId = currentUserId
+        if (userId != null) {
+            loadExistingPlan(userId)
+            loadSavingsProjection(false)
+            loadTopCategories(false)
+            loadComparativeInsight()
+            loadSmartFeatureContext()
+        } else {
+            _existingPlanState.value = UiState.Error("User session not found")
+        }
+    }
+
     fun loadExistingPlan(userId: String) {
         viewModelScope.launch {
             _existingPlanState.value = UiState.Loading

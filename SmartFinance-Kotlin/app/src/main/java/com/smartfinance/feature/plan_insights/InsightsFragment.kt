@@ -49,7 +49,6 @@ class InsightsFragment : Fragment() {
         LocationServices.getFusedLocationProviderClient(requireActivity())
     }
 
-    private var currentUserId: String? = null
     private var currentCurrency: String? = null
     private var smartFeatureDialogVisible = false
 
@@ -65,19 +64,8 @@ class InsightsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val userId = arguments?.getString("userId")
-        currentUserId = userId
-
-        if (userId != null) {
-            viewModel.loadExistingPlan(userId)
-            viewModel.loadSavingsProjection(false)
-            viewModel.loadTopCategories(false)
-            viewModel.loadComparativeInsight()
-            viewModel.loadSmartFeatureContext()
-            resolveSmartFeatureContextIfNeeded()
-        } else {
-            Snackbar.make(binding.root, "Error: User ID not found", Snackbar.LENGTH_LONG).show()
-        }
+        viewModel.loadAllData()
+        resolveSmartFeatureContextIfNeeded()
 
         setupListeners()
         observeViewModel()
@@ -97,7 +85,7 @@ class InsightsFragment : Fragment() {
         }
 
         binding.fabAddExpense.setOnClickListener {
-            val userId = currentUserId
+            val userId = viewModel.currentUserId
             val currency = currentCurrency
 
             if (userId.isNullOrBlank() || currency.isNullOrBlank()) {
