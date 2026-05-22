@@ -104,6 +104,12 @@
     </fragment>
 
     <fragment
+        android:id="@+id/spendingInsightsFragment"
+        android:name="com.smartfinance.feature.spending_insights.SpendingInsightsFragment"
+        android:label="Insights"
+        tools:layout="@layout/fragment_spending_insights" />
+
+    <fragment
         android:id="@+id/expenseDetailFragment"
         android:name="com.smartfinance.feature.expenses.ExpenseDetailFragment"
         android:label="Expense detail"
