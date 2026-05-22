@@ -56,7 +56,11 @@ final class EditExpenseViewModel: ObservableObject {
             onSaved(updated)
             didSave = true
         } catch {
-            saveError = error.localizedDescription
+            if ConnectivitySupport.isConnectivityIssue(error) {
+                saveError = ExpenseEvCMessages.updateRequiresInternet()
+            } else if !error.isCancelledRequest {
+                saveError = error.localizedDescription
+            }
         }
         isSaving = false
     }

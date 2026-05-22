@@ -2,16 +2,25 @@ import SwiftUI
 
 struct ExpensesListView: View {
     @StateObject private var viewModel: ExpensesListViewModel
+    private let receiptService: ReceiptImageService
+    private let cameraFacade: CameraFacade
     @State private var expenseToDelete: Expense? = nil
     @State private var showDeleteConfirmation = false
 
-    init(expensesService: ExpensesApplicationService, planService: PlanApplicationService) {
+    init(
+        expensesService: ExpensesApplicationService,
+        planService: PlanApplicationService,
+        receiptService: ReceiptImageService,
+        cameraFacade: CameraFacade
+    ) {
         _viewModel = StateObject(
             wrappedValue: ExpensesListViewModel(
                 expensesService: expensesService,
                 planService: planService
             )
         )
+        self.receiptService = receiptService
+        self.cameraFacade = cameraFacade
     }
 
     var body: some View {
@@ -98,7 +107,12 @@ struct ExpensesListView: View {
                 List {
                     ForEach(viewModel.filteredExpenses) { expense in
                         NavigationLink {
-                            ExpenseDetailView(expense: expense, expensesService: viewModel.expensesService)
+                            ExpenseDetailView(
+                                expense: expense,
+                                expensesService: viewModel.expensesService,
+                                receiptService: receiptService,
+                                cameraFacade: cameraFacade
+                            )
                         } label: {
                             ExpenseRow(expense: expense)
                         }

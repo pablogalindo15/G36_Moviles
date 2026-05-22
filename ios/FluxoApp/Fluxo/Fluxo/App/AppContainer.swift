@@ -12,6 +12,7 @@ final class AppContainer: ObservableObject {
     let topCategoriesService: TopCategoriesService
     let savingsProjectionService: SavingsProjectionService
     let insightsService: InsightsApplicationService
+    let receiptImageService: ReceiptImageService
     let localStore: LocalStore
     let planSnapshotCache: PlanSnapshotMemoryCache
     let cameraFacade: CameraFacade
@@ -48,9 +49,11 @@ final class AppContainer: ObservableObject {
         let functionsAdapter = FunctionsAdapter(httpClient: httpClient)
         let locationAdapter = LocationAdapter(httpClient: httpClient)
         let expensesAdapter = ExpensesAdapter(httpClient: httpClient)
+        let receiptsAdapter = ReceiptsAdapter(httpClient: httpClient)
 
         let localStore = LocalStore()
         let planSnapshotCache = PlanSnapshotMemoryCache()
+        let imageCacheService = ImageCacheService()
 
         let authService = AuthApplicationService(
             authAdapter: authAdapter,
@@ -87,6 +90,11 @@ final class AppContainer: ObservableObject {
             authAdapter: authAdapter,
             localStore: localStore
         )
+        let receiptImageService = ReceiptImageService(
+            receiptsAdapter: receiptsAdapter,
+            authAdapter: authAdapter,
+            imageCache: imageCacheService
+        )
 
         self.config = config
         self.authService = authService
@@ -96,6 +104,7 @@ final class AppContainer: ObservableObject {
         self.topCategoriesService = topCategoriesService
         self.savingsProjectionService = savingsProjectionService
         self.insightsService = insightsService
+        self.receiptImageService = receiptImageService
         self.localStore = localStore
         self.planSnapshotCache = planSnapshotCache
         self.cameraFacade = CameraFacade()

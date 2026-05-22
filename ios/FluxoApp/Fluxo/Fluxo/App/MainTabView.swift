@@ -16,6 +16,8 @@ struct MainTabView: View {
                         comparativeSpendingService: container.comparativeSpendingService,
                         topCategoriesService: container.topCategoriesService,
                         savingsProjectionService: container.savingsProjectionService,
+                        receiptService: container.receiptImageService,
+                        cameraFacade: container.cameraFacade,
                         preferencesAdapter: container.preferencesAdapter,
                         expensesFileAdapter: container.expensesFileAdapter,
                         onSignOut: onSignOut
@@ -26,7 +28,9 @@ struct MainTabView: View {
                 NavigationStack {
                     ExpensesListView(
                         expensesService: container.expensesService,
-                        planService: container.planService
+                        planService: container.planService,
+                        receiptService: container.receiptImageService,
+                        cameraFacade: container.cameraFacade
                     )
                 }
             }

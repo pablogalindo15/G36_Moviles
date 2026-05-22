@@ -84,7 +84,11 @@ final class ExpensesListViewModel: ObservableObject {
             try await expensesService.deleteExpense(id: expense.id)
             state = .loaded(list.filter { $0.id != expense.id })
         } catch {
-            deleteError = error.localizedDescription
+            if ConnectivitySupport.isConnectivityIssue(error) {
+                deleteError = ExpenseEvCMessages.deleteRequiresInternet(fromList: true)
+            } else if !error.isCancelledRequest {
+                deleteError = error.localizedDescription
+            }
         }
     }
 

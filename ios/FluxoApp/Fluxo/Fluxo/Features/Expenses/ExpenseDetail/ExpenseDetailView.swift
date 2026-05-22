@@ -6,11 +6,18 @@ struct ExpenseDetailView: View {
     @State private var showingEditSheet = false
     @State private var showingDeleteDialog = false
 
-    init(expense: Expense, expensesService: ExpensesApplicationService) {
+    init(
+        expense: Expense,
+        expensesService: ExpensesApplicationService,
+        receiptService: ReceiptImageService,
+        cameraFacade: CameraFacade
+    ) {
         _viewModel = StateObject(
             wrappedValue: ExpenseDetailViewModel(
                 expense: expense,
-                expensesService: expensesService
+                expensesService: expensesService,
+                receiptService: receiptService,
+                cameraFacade: cameraFacade
             )
         )
     }
@@ -23,6 +30,7 @@ struct ExpenseDetailView: View {
                 if let note = viewModel.currentExpense.note, !note.isEmpty {
                     noteSection(note: note)
                 }
+                receiptSection
                 dateSection
                 currencySection
             }
@@ -34,8 +42,8 @@ struct ExpenseDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
         .overlay {
-            if viewModel.isDeleting {
-                LoadingOverlay(title: "Deleting...")
+            if viewModel.isDeleting || viewModel.isUploadingReceipt {
+                LoadingOverlay(title: viewModel.isDeleting ? "Deleting..." : "Uploading receipt...")
             }
         }
         .sheet(isPresented: $showingEditSheet) {
@@ -45,6 +53,11 @@ struct ExpenseDetailView: View {
                     expensesService: viewModel.expensesService,
                     onSaved: { updated in viewModel.handleSavedFromEdit(updated) }
                 )
+            }
+        }
+        .sheet(isPresented: $viewModel.isShowingReceiptPicker) {
+            SystemImagePicker(sourceType: viewModel.pickerSourceType) { image in
+                Task { await viewModel.handlePickedReceipt(image) }
             }
         }
         .confirmationDialog(
@@ -66,8 +79,19 @@ struct ExpenseDetailView: View {
         } message: {
             Text(viewModel.deleteError ?? "")
         }
+        .alert("Couldn't load receipt", isPresented: Binding(
+            get: { viewModel.receiptError != nil },
+            set: { if !$0 { viewModel.receiptError = nil } }
+        )) {
+            Button("OK", role: .cancel) { viewModel.receiptError = nil }
+        } message: {
+            Text(viewModel.receiptError ?? "")
+        }
         .onChange(of: viewModel.didDelete) { _, newValue in
             if newValue { dismiss() }
+        }
+        .task {
+            await viewModel.loadReceiptIfNeeded()
         }
     }
 
@@ -136,6 +160,59 @@ struct ExpenseDetailView: View {
             Text(note)
                 .font(.body)
                 .foregroundColor(FluxoTheme.titleText)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FluxoTheme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var receiptSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Receipt")
+                    .font(.caption)
+                    .foregroundColor(FluxoTheme.secondaryText)
+                Spacer()
+                Button(viewModel.receiptImage == nil ? "Add receipt" : "Replace receipt") {
+                    viewModel.openReceiptCapture()
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(FluxoTheme.primary)
+            }
+
+            if viewModel.isLoadingReceipt && viewModel.receiptImage == nil {
+                ProgressView()
+                    .frame(maxWidth: .infinity, minHeight: 160)
+            } else if let receiptImage = viewModel.receiptImage {
+                Image(uiImage: receiptImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 180)
+                    .background(FluxoTheme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            } else {
+                Text(viewModel.receiptMessage ?? "No receipt attached to this expense yet.")
+                    .font(.footnote)
+                    .foregroundColor(FluxoTheme.secondaryText)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(FluxoTheme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
+            if let receiptMessage = viewModel.receiptMessage, viewModel.receiptImage != nil {
+                Text(receiptMessage)
+                    .font(.caption2)
+                    .foregroundColor(FluxoTheme.secondaryText)
+            }
+
+            if let fallback = viewModel.sensorFallbackMessage {
+                Text(fallback)
+                    .font(.caption2)
+                    .foregroundColor(FluxoTheme.secondaryText)
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
