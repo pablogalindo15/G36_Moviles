@@ -123,11 +123,46 @@ object DatabaseModule {
 
     private val migration4To5 = object : Migration(4, 5) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE local_expense ADD COLUMN receiptImageUrl TEXT")
-            db.execSQL("ALTER TABLE local_expense ADD COLUMN receiptLocalUri TEXT")
+            // Room expectations for local_expense in version 5 include:
+            // receiptImageUrl (nullable), receiptLocalUri (nullable), 
+            // receiptSyncStatus (NOT NULL), syncStatus (NOT NULL)
+            
             db.execSQL(
-                "ALTER TABLE local_expense ADD COLUMN receiptSyncStatus TEXT NOT NULL DEFAULT 'none'"
+                """
+                CREATE TABLE IF NOT EXISTS local_expense_new (
+                    id TEXT NOT NULL,
+                    userId TEXT NOT NULL,
+                    amount REAL NOT NULL,
+                    currency TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    note TEXT,
+                    occurredAt TEXT NOT NULL,
+                    createdAt TEXT NOT NULL,
+                    clientUuid TEXT NOT NULL,
+                    receiptImageUrl TEXT,
+                    receiptLocalUri TEXT,
+                    receiptSyncStatus TEXT NOT NULL,
+                    syncStatus TEXT NOT NULL,
+                    PRIMARY KEY(id)
+                )
+                """.trimIndent()
             )
+            
+            db.execSQL(
+                """
+                INSERT INTO local_expense_new (
+                    id, userId, amount, currency, category, note, occurredAt, createdAt, clientUuid,
+                    receiptImageUrl, receiptLocalUri, receiptSyncStatus, syncStatus
+                )
+                SELECT 
+                    id, userId, amount, currency, category, note, occurredAt, createdAt, clientUuid,
+                    NULL, NULL, 'none', 'SYNCED'
+                FROM local_expense
+                """.trimIndent()
+            )
+            
+            db.execSQL("DROP TABLE local_expense")
+            db.execSQL("ALTER TABLE local_expense_new RENAME TO local_expense")
         }
     }
 

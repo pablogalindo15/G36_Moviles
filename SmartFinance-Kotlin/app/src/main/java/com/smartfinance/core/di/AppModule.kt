@@ -1,5 +1,6 @@
 package com.smartfinance.core.di
 
+import android.content.Context
 import com.smartfinance.core.network.SupabaseClientProvider
 import com.smartfinance.data.expenses.ExpenseRemoteDataSource
 import com.smartfinance.data.expenses.ExpenseRepository
@@ -35,6 +36,7 @@ import com.smartfinance.domain.plan_insights.PlanInsightsFacade
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import javax.inject.Singleton
@@ -131,10 +133,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideExpenseRepository(
+        @ApplicationContext context: Context,
         remoteDataSource: ExpenseRemoteDataSource,
         localDao: SmartFinanceDao
     ): ExpenseRepository {
-        return SupabaseExpenseAdapter(remoteDataSource, localDao)
+        return SupabaseExpenseAdapter(context, remoteDataSource, localDao)
     }
 
     @Provides
