@@ -11,6 +11,8 @@ final class AppContainer: ObservableObject {
     let comparativeSpendingService: ComparativeSpendingService
     let topCategoriesService: TopCategoriesService
     let savingsProjectionService: SavingsProjectionService
+    let insightsService: InsightsApplicationService
+    let receiptImageService: ReceiptImageService
     let localStore: LocalStore
     let planSnapshotCache: PlanSnapshotMemoryCache
     let cameraFacade: CameraFacade
@@ -47,9 +49,11 @@ final class AppContainer: ObservableObject {
         let functionsAdapter = FunctionsAdapter(httpClient: httpClient)
         let locationAdapter = LocationAdapter(httpClient: httpClient)
         let expensesAdapter = ExpensesAdapter(httpClient: httpClient)
+        let receiptsAdapter = ReceiptsAdapter(httpClient: httpClient)
 
         let localStore = LocalStore()
         let planSnapshotCache = PlanSnapshotMemoryCache()
+        let imageCacheService = ImageCacheService()
 
         let authService = AuthApplicationService(
             authAdapter: authAdapter,
@@ -81,6 +85,16 @@ final class AppContainer: ObservableObject {
             functionsAdapter: functionsAdapter,
             authAdapter: authAdapter
         )
+        let insightsService = InsightsApplicationService(
+            functionsAdapter: functionsAdapter,
+            authAdapter: authAdapter,
+            localStore: localStore
+        )
+        let receiptImageService = ReceiptImageService(
+            receiptsAdapter: receiptsAdapter,
+            authAdapter: authAdapter,
+            imageCache: imageCacheService
+        )
 
         self.config = config
         self.authService = authService
@@ -89,6 +103,8 @@ final class AppContainer: ObservableObject {
         self.comparativeSpendingService = comparativeSpendingService
         self.topCategoriesService = topCategoriesService
         self.savingsProjectionService = savingsProjectionService
+        self.insightsService = insightsService
+        self.receiptImageService = receiptImageService
         self.localStore = localStore
         self.planSnapshotCache = planSnapshotCache
         self.cameraFacade = CameraFacade()

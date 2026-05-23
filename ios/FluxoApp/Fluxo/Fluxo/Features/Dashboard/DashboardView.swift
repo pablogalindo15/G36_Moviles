@@ -2,7 +2,6 @@ import SwiftUI
 
 struct DashboardView: View {
     @StateObject private var viewModel: DashboardViewModel
-
     init(viewModel: DashboardViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
@@ -11,7 +10,7 @@ struct DashboardView: View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
+                    LazyVStack(alignment: .leading, spacing: 24) {
                         if let syncText = viewModel.lastSyncText {
                             Text(syncText)
                                 .font(.caption)
@@ -50,9 +49,11 @@ struct DashboardView: View {
                 LogExpenseView(
                     currency: viewModel.currency,
                     service: viewModel.expensesService,
+                    receiptService: viewModel.receiptService,
+                    cameraFacade: viewModel.cameraFacade,
                     preferencesAdapter: viewModel.preferencesAdapter,
-                    onExpenseCreated: { expense in
-                        viewModel.handleExpenseCreated(expense)
+                    onExpenseCreated: { expense, notice in
+                        viewModel.handleExpenseCreated(expense, notice: notice)
                     }
                 )
             }

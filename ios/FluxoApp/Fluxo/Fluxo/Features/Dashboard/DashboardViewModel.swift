@@ -40,6 +40,8 @@ final class DashboardViewModel: ObservableObject {
     private let comparativeSpendingService: ComparativeSpendingService
     private let topCategoriesService: TopCategoriesService
     private let savingsProjectionService: SavingsProjectionService
+    let receiptService: ReceiptImageService
+    let cameraFacade: CameraFacade
     let preferencesAdapter: PreferencesAdapter
     private let expensesFileAdapter: ExpensesFileAdapter
     private let onSignOut: () -> Void
@@ -52,6 +54,8 @@ final class DashboardViewModel: ObservableObject {
         comparativeSpendingService: ComparativeSpendingService,
         topCategoriesService: TopCategoriesService,
         savingsProjectionService: SavingsProjectionService,
+        receiptService: ReceiptImageService,
+        cameraFacade: CameraFacade,
         preferencesAdapter: PreferencesAdapter,
         expensesFileAdapter: ExpensesFileAdapter,
         onSignOut: @escaping () -> Void
@@ -61,6 +65,8 @@ final class DashboardViewModel: ObservableObject {
         self.comparativeSpendingService = comparativeSpendingService
         self.topCategoriesService = topCategoriesService
         self.savingsProjectionService = savingsProjectionService
+        self.receiptService = receiptService
+        self.cameraFacade = cameraFacade
         self.preferencesAdapter = preferencesAdapter
         self.expensesFileAdapter = expensesFileAdapter
         self.onSignOut = onSignOut
@@ -91,16 +97,10 @@ final class DashboardViewModel: ObservableObject {
                     connectivityMessage = nil
                 }
             }
-            var dashboardLoadedSuccessfully = true
-            if let nextPayday = cachedNextPayday {
-                dashboardLoadedSuccessfully = await loadExpenseSummary(
-                    nextPayday: nextPayday,
-                    currency: currency
-                ) && dashboardLoadedSuccessfully
-            }
-            dashboardLoadedSuccessfully = await loadComparativeSpending() && dashboardLoadedSuccessfully
-            dashboardLoadedSuccessfully = await loadTopCategories() && dashboardLoadedSuccessfully
-            dashboardLoadedSuccessfully = await loadSavingsProjection() && dashboardLoadedSuccessfully
+            let dashboardLoadedSuccessfully = await loadDashboardContent(
+                nextPayday: cachedNextPayday,
+                currency: currency
+            )
 
             if snapshot.source != .localCache, dashboardLoadedSuccessfully {
                 let now = Date()
@@ -121,15 +121,18 @@ final class DashboardViewModel: ObservableObject {
         showLogExpense = true
     }
 
-    func handleExpenseCreated(_: Expense) {
+    func handleExpenseCreated(_: Expense, notice: String?) {
         showLogExpense = false
+        if let notice {
+            connectivityMessage = notice
+        }
         // Refresh spending summary, comparative insight, and top categories after a new expense.
-        if let nextPayday = cachedNextPayday {
+        if cachedNextPayday != nil {
             Task {
-                _ = await loadExpenseSummary(nextPayday: nextPayday, currency: currency)
-                _ = await loadComparativeSpending()
-                _ = await loadTopCategories()
-                _ = await loadSavingsProjection()
+                _ = await loadDashboardContent(
+                    nextPayday: cachedNextPayday,
+                    currency: currency
+                )
             }
         }
     }
@@ -224,65 +227,139 @@ final class DashboardViewModel: ObservableObject {
 
     // MARK: - Private
 
-    private func loadExpenseSummary(nextPayday: Date, currency: String) async -> Bool {
+    private func loadDashboardContent(nextPayday: Date?, currency: String) async -> Bool {
         let previousSummary = expenseSummary
-        do {
-            expenseSummary = try await expensesService.fetchExpenseSummary(
-                nextPayday: nextPayday,
-                currency: currency
-            )
-            return true
-        } catch {
-            // Don't block plan overview on a summary error.
-            expenseSummary = previousSummary
-            return false
+        let previousComparative = comparativeSpending
+        let previousTopCategories = topCategories
+        let previousSavingsProjection = savingsProjection
+
+        comparativeError = nil
+        topCategoriesError = nil
+        savingsProjectionError = nil
+        isLoadingComparative = true
+        isLoadingTopCategories = true
+        isLoadingSavingsProjection = true
+
+        let expensesService = self.expensesService
+        let comparativeService = self.comparativeSpendingService
+        let topCategoriesService = self.topCategoriesService
+        let savingsProjectionService = self.savingsProjectionService
+
+        async let summaryTask: Result<ExpenseSummary, Error>? = {
+            guard let nextPayday else { return nil }
+            do {
+                return .success(
+                    try await expensesService.fetchExpenseSummary(
+                        nextPayday: nextPayday,
+                        currency: currency
+                    )
+                )
+            } catch {
+                return .failure(error)
+            }
+        }()
+
+        async let comparativeTask: Result<ComparativeSpendingResult, Error> = {
+            do {
+                return .success(try await comparativeService.fetchComparativeSpending())
+            } catch {
+                return .failure(error)
+            }
+        }()
+
+        async let topCategoriesTask: Result<TopCategoriesResult, Error> = {
+            do {
+                return .success(try await topCategoriesService.fetchTopCategories())
+            } catch {
+                return .failure(error)
+            }
+        }()
+
+        async let savingsProjectionTask: Result<SavingsProjectionResult, Error> = {
+            do {
+                return .success(try await savingsProjectionService.fetchSavingsProjection())
+            } catch {
+                return .failure(error)
+            }
+        }()
+
+        let summaryResult = await summaryTask
+        let comparativeResult = await comparativeTask
+        let topCategoriesResult = await topCategoriesTask
+        let savingsProjectionResult = await savingsProjectionTask
+
+        var loadedSuccessfully = true
+
+        if let summaryResult {
+            switch summaryResult {
+            case .success(let summary):
+                expenseSummary = summary
+            case .failure:
+                expenseSummary = previousSummary
+                loadedSuccessfully = false
+            }
         }
+
+        loadedSuccessfully = applyComparativeResult(
+            comparativeResult,
+            previousResult: previousComparative
+        ) && loadedSuccessfully
+        loadedSuccessfully = applyTopCategoriesResult(
+            topCategoriesResult,
+            previousResult: previousTopCategories
+        ) && loadedSuccessfully
+        loadedSuccessfully = applySavingsProjectionResult(
+            savingsProjectionResult,
+            previousResult: previousSavingsProjection
+        ) && loadedSuccessfully
+
+        return loadedSuccessfully
     }
 
-    private func loadComparativeSpending() async -> Bool {
-        isLoadingComparative = true
-        let previousResult = comparativeSpending
-        comparativeError = nil
-        do {
-            comparativeSpending = try await comparativeSpendingService.fetchComparativeSpending()
-            isLoadingComparative = false
+    private func applyComparativeResult(
+        _ result: Result<ComparativeSpendingResult, Error>,
+        previousResult: ComparativeSpendingResult?
+    ) -> Bool {
+        defer { isLoadingComparative = false }
+        switch result {
+        case .success(let comparative):
+            comparativeSpending = comparative
             return true
-        } catch {
+        case .failure(let error):
             comparativeSpending = previousResult
             comparativeError = previousResult == nil ? insightErrorMessage(for: error) : nil
-            isLoadingComparative = false
             return false
         }
     }
 
-    private func loadTopCategories() async -> Bool {
-        isLoadingTopCategories = true
-        let previousResult = topCategories
-        topCategoriesError = nil
-        do {
-            topCategories = try await topCategoriesService.fetchTopCategories()
-            isLoadingTopCategories = false
+    private func applyTopCategoriesResult(
+        _ result: Result<TopCategoriesResult, Error>,
+        previousResult: TopCategoriesResult?
+    ) -> Bool {
+        defer { isLoadingTopCategories = false }
+        switch result {
+        case .success(let categories):
+            topCategories = categories
             return true
-        } catch {
+        case .failure(let error):
             topCategories = previousResult
             topCategoriesError = previousResult == nil ? insightErrorMessage(for: error) : nil
-            isLoadingTopCategories = false
             return false
         }
     }
 
-    private func loadSavingsProjection() async -> Bool {
-        isLoadingSavingsProjection = true
-        let previousResult = savingsProjection
-        savingsProjectionError = nil
-        do {
-            savingsProjection = try await savingsProjectionService.fetchSavingsProjection()
-            isLoadingSavingsProjection = false
+    private func applySavingsProjectionResult(
+        _ result: Result<SavingsProjectionResult, Error>,
+        previousResult: SavingsProjectionResult?
+    ) -> Bool {
+        defer { isLoadingSavingsProjection = false }
+        switch result {
+        case .success(let projection):
+            savingsProjection = projection
             return true
-        } catch {
+        case .failure(let error):
             savingsProjection = previousResult
             savingsProjectionError = previousResult == nil ? insightErrorMessage(for: error) : nil
-            isLoadingSavingsProjection = false
             return false
         }
     }

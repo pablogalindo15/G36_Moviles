@@ -93,6 +93,19 @@ final class ExpensesApplicationService {
         }
     }
 
+    func updateExpense(id: UUID, patch: ExpenseUpdatePatch) async throws -> Expense {
+        let session = try await currentSession()
+        let updated = try await expensesAdapter.updateExpense(id: id, patch: patch, accessToken: session.token)
+        await MainActor.run { localStore.saveExpense(updated) }
+        return updated
+    }
+
+    func deleteExpense(id: UUID) async throws {
+        let session = try await currentSession()
+        try await expensesAdapter.deleteExpense(id: id, accessToken: session.token)
+        await MainActor.run { localStore.deleteExpense(id: id) }
+    }
+
     func fetchMyExpenses() async throws -> [Expense] {
         let session = try await currentSession()
         return try await fetchExpensesWithLocalFallback(

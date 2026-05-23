@@ -42,18 +42,7 @@ struct RootView: View {
                     loadingView
                 }
             case .dashboard:
-                DashboardView(
-                    viewModel: DashboardViewModel(
-                        planService: container.planService,
-                        expensesService: container.expensesService,
-                        comparativeSpendingService: container.comparativeSpendingService,
-                        topCategoriesService: container.topCategoriesService,
-                        savingsProjectionService: container.savingsProjectionService,
-                        preferencesAdapter: container.preferencesAdapter,
-                        expensesFileAdapter: container.expensesFileAdapter,
-                        onSignOut: handleSignOut
-                    )
-                )
+                MainTabView(container: container, onSignOut: handleSignOut)
             }
         }
         .background(FluxoTheme.background.ignoresSafeArea())

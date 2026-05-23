@@ -17,6 +17,7 @@ struct ExpenseDraft: Codable {
     let selectedCategoryRaw: String
     let note: String
     let occurredAtTimeInterval: TimeInterval
+    let hasReceiptDraft: Bool?
 
     var selectedCategory: ExpenseCategory {
         ExpenseCategory(rawValue: selectedCategoryRaw) ?? .other

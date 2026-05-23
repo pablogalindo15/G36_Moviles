@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UIKit
 
 enum LogExpenseSubmitState: Equatable {
     case idle
@@ -16,20 +17,30 @@ final class LogExpenseViewModel: ObservableObject {
     @Published var occurredAt: Date = Date()
     @Published var submitState: LogExpenseSubmitState = .idle
     @Published var infoMessage: String? = nil
+    @Published var selectedReceiptImage: UIImage? = nil
+    @Published var isShowingReceiptPicker: Bool = false
+    @Published var pickerSourceType: UIImagePickerController.SourceType = .photoLibrary
+    @Published var sensorFallbackMessage: String? = nil
 
     let currency: String
     private let service: ExpensesApplicationService
+    private let receiptService: ReceiptImageService
+    private let cameraFacade: CameraFacade
     private let preferencesAdapter: PreferencesAdapter
-    private let onExpenseCreated: (Expense) -> Void
+    private let onExpenseCreated: (Expense, String?) -> Void
 
     init(
         currency: String,
         service: ExpensesApplicationService,
+        receiptService: ReceiptImageService,
+        cameraFacade: CameraFacade,
         preferencesAdapter: PreferencesAdapter,
-        onExpenseCreated: @escaping (Expense) -> Void
+        onExpenseCreated: @escaping (Expense, String?) -> Void
     ) {
         self.currency = currency
         self.service = service
+        self.receiptService = receiptService
+        self.cameraFacade = cameraFacade
         self.preferencesAdapter = preferencesAdapter
         self.onExpenseCreated = onExpenseCreated
         restoreDraftIfNeeded()
@@ -60,10 +71,24 @@ final class LogExpenseViewModel: ObservableObject {
                 note: note.isEmpty ? nil : note,
                 occurredAt: occurredAt
             )
+            var receiptNotice: String?
+            if let selectedReceiptImage {
+                do {
+                    try await receiptService.uploadReceipt(selectedReceiptImage, for: expense)
+                } catch {
+                    if ConnectivitySupport.isConnectivityIssue(error) {
+                        await receiptService.queueReceiptForLaterUpload(selectedReceiptImage, for: expense)
+                        receiptNotice = ExpenseEvCMessages.receiptSavedLocallyForRetry()
+                    } else {
+                        receiptNotice = "The expense was saved, but the receipt couldn't be uploaded. You can retry from expense detail."
+                    }
+                }
+            }
             preferencesAdapter.setLastSeenCurrency(currency)
             preferencesAdapter.clearExpenseDraft()
+            await receiptService.clearDraftReceipt()
             submitState = .success(expense)
-            onExpenseCreated(expense)
+            onExpenseCreated(expense, receiptNotice)
         } catch let svcErr as ExpensesServiceError {
             let message: String
             switch svcErr {
@@ -98,9 +123,14 @@ final class LogExpenseViewModel: ObservableObject {
             amountText: amountText,
             selectedCategoryRaw: selectedCategory.rawValue,
             note: note,
-            occurredAtTimeInterval: occurredAt.timeIntervalSince1970
+            occurredAtTimeInterval: occurredAt.timeIntervalSince1970,
+            hasReceiptDraft: selectedReceiptImage != nil
         )
         preferencesAdapter.setExpenseDraft(draft)
+        let receipt = selectedReceiptImage
+        Task {
+            await receiptService.saveDraftReceipt(receipt)
+        }
     }
 
     func reset() {
@@ -110,7 +140,21 @@ final class LogExpenseViewModel: ObservableObject {
         occurredAt = Date()
         submitState = .idle
         infoMessage = nil
+        selectedReceiptImage = nil
+        sensorFallbackMessage = nil
         preferencesAdapter.clearExpenseDraft()
+        Task { await receiptService.clearDraftReceipt() }
+    }
+
+    func openReceiptCapture() {
+        pickerSourceType = cameraFacade.preferredSourceType()
+        sensorFallbackMessage = cameraFacade.fallbackHint
+        isShowingReceiptPicker = true
+    }
+
+    func savePickedReceipt(_ image: UIImage?) {
+        selectedReceiptImage = image
+        persistDraft()
     }
 
     private func restoreDraftIfNeeded() {
@@ -119,6 +163,15 @@ final class LogExpenseViewModel: ObservableObject {
         selectedCategory = draft.selectedCategory
         note = draft.note
         occurredAt = draft.occurredAt
-        infoMessage = "Recovered your saved expense draft. Review it and try again."
+        let baseMessage = "Recovered your saved expense draft. Review it and try again."
+        if draft.hasReceiptDraft == true {
+            infoMessage = "\(baseMessage) The receipt preview was also restored on this device."
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                selectedReceiptImage = await receiptService.loadDraftReceipt()
+            }
+        } else {
+            infoMessage = baseMessage
+        }
     }
 }

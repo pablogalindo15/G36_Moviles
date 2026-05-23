@@ -43,6 +43,30 @@ final class FunctionsAdapter {
         )
         return try JSONDecoder().decode(GenerateFirstPlanResponseDTO.self, from: data)
     }
+
+    func fetchCategoryCycleComparison(accessToken: String) async throws -> CategoryCycleComparison {
+        let data = try await requestData(
+            path: "/functions/v1/get-bq-category-cycle-comparison",
+            accessToken: accessToken
+        )
+        return try Self.insightsDecoder.decode(CategoryCycleComparison.self, from: data)
+    }
+
+    func fetchCategoryStreaks(accessToken: String) async throws -> CategoryStreaks {
+        let data = try await requestData(
+            path: "/functions/v1/get-bq-category-streaks",
+            accessToken: accessToken
+        )
+        return try Self.insightsDecoder.decode(CategoryStreaks.self, from: data)
+    }
+
+    func fetchBiggestExpenseOfCycle(accessToken: String) async throws -> BiggestExpenseOfCycle {
+        let data = try await requestData(
+            path: "/functions/v1/get-bq-biggest-expense-of-cycle",
+            accessToken: accessToken
+        )
+        return try Self.insightsDecoder.decode(BiggestExpenseOfCycle.self, from: data)
+    }
 }
 
 private extension FunctionsAdapter {
@@ -90,6 +114,12 @@ private extension FunctionsAdapter {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]
         return f
+    }()
+
+    static let insightsDecoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
     }()
 }
 

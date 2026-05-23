@@ -27,7 +27,17 @@ function getBearerToken(req: Request): string | null {
   return auth.toLowerCase().startsWith("bearer ") ? auth.slice(7) : auth;
 }
 
-const PERIOD_DAYS = 30;
+const KNOWN_CATEGORIES = [
+  "food",
+  "transport",
+  "entertainment",
+  "health",
+  "shopping",
+  "bills",
+  "other",
+];
+
+const CAP_DAYS = 30;
 const TOP_N = 3;
 
 Deno.serve(async (req: Request) => {
@@ -40,7 +50,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // -----------------------------------------------------------------
-  // 1. Auth — validate JWT even though gateway verify is disabled
+  // 1. Auth
   // -----------------------------------------------------------------
   const accessToken = getBearerToken(req);
   if (!accessToken) {
@@ -64,7 +74,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // -----------------------------------------------------------------
-  // 3. Client — user JWT (RLS enforced — personal data only)
+  // 3. Single Supabase client with user JWT (RLS enforced — personal data only)
   // -----------------------------------------------------------------
   const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
@@ -74,7 +84,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     // -----------------------------------------------------------------
-    // 4. Validate JWT — user identity is only needed for auth, not for filtering
+    // 4. Validate JWT + resolve current user
     // -----------------------------------------------------------------
     const { data: userData, error: userError } = await supabaseUserClient.auth.getUser(
       accessToken,
@@ -83,24 +93,17 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid token", details: userError?.message }, 401);
     }
     const userId = userData.user.id;
-    console.log(`[bq-top-categories] request user=${userId}`);
+    console.log(`[bq-category-streaks] request user=${userId}`);
 
     // -----------------------------------------------------------------
-    // 5. Calculate period window
-    // -----------------------------------------------------------------
-    const now = new Date();
-    const periodStart = new Date(now.getTime() - PERIOD_DAYS * 24 * 60 * 60 * 1000);
-    console.log(`[bq-top-categories] period=${periodStart.toISOString()} → ${now.toISOString()}`);
-
-    // -----------------------------------------------------------------
-    // 6. Fetch category column for the current user's expenses in the window
+    // 5. Fetch the most recent occurred_at per category
+    //    We only need category + occurred_at — minimal data transfer.
     // -----------------------------------------------------------------
     const { data: expenseRows, error: expensesError } = await supabaseUserClient
       .from("expenses")
-      .select("category")
+      .select("category, occurred_at")
       .eq("user_id", userId)
-      .gte("occurred_at", periodStart.toISOString())
-      .lte("occurred_at", now.toISOString());
+      .order("occurred_at", { ascending: false });
 
     if (expensesError) {
       return json(
@@ -109,56 +112,57 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const totalExpenses = (expenseRows ?? []).length;
-    console.log(`[bq-top-categories] total_expenses=${totalExpenses}`);
-
     // -----------------------------------------------------------------
-    // 7. No expenses guard
+    // 6. Find the latest occurred_at per category in JS
     // -----------------------------------------------------------------
-    if (totalExpenses === 0) {
-      return json({
-        total_expenses: 0,
-        result: null,
-        reason: "insufficient_data",
-      });
-    }
-
-    // -----------------------------------------------------------------
-    // 8. Aggregate: count occurrences per category
-    // -----------------------------------------------------------------
-    const counts = new Map<string, number>();
+    const latestByCategory = new Map<string, Date>();
     for (const row of expenseRows ?? []) {
       const cat = row.category as string;
-      counts.set(cat, (counts.get(cat) ?? 0) + 1);
+      if (!latestByCategory.has(cat)) {
+        latestByCategory.set(cat, new Date(row.occurred_at as string));
+      }
+    }
+
+    const now = new Date();
+    console.log(`[bq-category-streaks] evaluatedAt=${now.toISOString()}`);
+
+    // -----------------------------------------------------------------
+    // 7. Compute days_since_last for every known category
+    //    Categories with no expenses ever are excluded (no data to show).
+    // -----------------------------------------------------------------
+    const streaks: Array<{ category: string; days_since_last: number; capped: boolean }> = [];
+
+    for (const category of KNOWN_CATEGORIES) {
+      const lastDate = latestByCategory.get(category);
+      if (!lastDate) continue; // never used — skip
+
+      const rawDays = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+      const capped = rawDays > CAP_DAYS;
+      const daysSinceLast = capped ? CAP_DAYS : rawDays;
+
+      streaks.push({ category, days_since_last: daysSinceLast, capped });
     }
 
     // -----------------------------------------------------------------
-    // 9. Sort descending by count, take top N
+    // 8. Sort descending by days_since_last, take top N
     // -----------------------------------------------------------------
-    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-    const top = sorted.slice(0, TOP_N);
-
-    const topCategories = top.map(([category, count]) => ({
-      category,
-      count,
-      percentage: count / totalExpenses,
-    }));
+    streaks.sort((a, b) => b.days_since_last - a.days_since_last);
+    const topStreaks = streaks.slice(0, TOP_N);
 
     console.log(
-      `[bq-top-categories] top3=${topCategories.map((c) => `${c.category}:${c.count}`).join(", ")}`,
+      `[bq-category-streaks] top3=${topStreaks.map((s) => `${s.category}:${s.days_since_last}d`).join(", ")}`,
     );
 
     // -----------------------------------------------------------------
-    // 10. Success response
+    // 9. Success response
     // -----------------------------------------------------------------
     return json({
-      total_expenses: totalExpenses,
-      period_days: PERIOD_DAYS,
-      top_categories: topCategories,
+      evaluated_at: now.toISOString(),
+      streaks: topStreaks,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[bq-top-categories] unhandled error: ${message}`);
+    console.error(`[bq-category-streaks] unhandled error: ${message}`);
     return json({ error: "Internal error", detail: message }, 500);
   }
 });

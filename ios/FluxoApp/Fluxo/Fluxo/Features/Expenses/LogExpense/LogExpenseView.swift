@@ -7,13 +7,17 @@ struct LogExpenseView: View {
     init(
         currency: String,
         service: ExpensesApplicationService,
+        receiptService: ReceiptImageService,
+        cameraFacade: CameraFacade,
         preferencesAdapter: PreferencesAdapter,
-        onExpenseCreated: @escaping (Expense) -> Void
+        onExpenseCreated: @escaping (Expense, String?) -> Void
     ) {
         _viewModel = StateObject(
             wrappedValue: LogExpenseViewModel(
                 currency: currency,
                 service: service,
+                receiptService: receiptService,
+                cameraFacade: cameraFacade,
                 preferencesAdapter: preferencesAdapter,
                 onExpenseCreated: onExpenseCreated
             )
@@ -27,6 +31,7 @@ struct LogExpenseView: View {
                     amountSection
                     categorySection
                     noteSection
+                    receiptSection
                     dateSection
 
                     if case .failure(let msg) = viewModel.submitState {
@@ -64,6 +69,11 @@ struct LogExpenseView: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .sheet(isPresented: $viewModel.isShowingReceiptPicker) {
+                SystemImagePicker(sourceType: viewModel.pickerSourceType) { image in
+                    viewModel.savePickedReceipt(image)
+                }
+            }
             .overlay {
                 if viewModel.submitState == .submitting {
                     LoadingOverlay(title: "Saving...")
@@ -79,6 +89,9 @@ struct LogExpenseView: View {
                 viewModel.persistDraft()
             }
             .onChange(of: viewModel.occurredAt) { _, _ in
+                viewModel.persistDraft()
+            }
+            .onChange(of: viewModel.selectedReceiptImage) { _, _ in
                 viewModel.persistDraft()
             }
             .onChange(of: viewModel.submitState) { _, newValue in
@@ -134,6 +147,46 @@ struct LogExpenseView: View {
         FluxoInputField(title: "Note (optional)") {
             TextField("What was it for?", text: $viewModel.note)
                 .autocorrectionDisabled()
+        }
+    }
+
+    private var receiptSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Receipt (optional)")
+                    .font(.caption)
+                    .foregroundColor(FluxoTheme.secondaryText)
+                Spacer()
+                Button(viewModel.selectedReceiptImage == nil ? "Add receipt" : "Replace receipt") {
+                    viewModel.openReceiptCapture()
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(FluxoTheme.primary)
+            }
+
+            if let selectedReceiptImage = viewModel.selectedReceiptImage {
+                Image(uiImage: selectedReceiptImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 180)
+                    .background(FluxoTheme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            } else {
+                Text("Attach a receipt photo so it can be viewed later from expense detail.")
+                    .font(.footnote)
+                    .foregroundColor(FluxoTheme.secondaryText)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(FluxoTheme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
+            if let fallback = viewModel.sensorFallbackMessage {
+                Text(fallback)
+                    .font(.caption2)
+                    .foregroundColor(FluxoTheme.secondaryText)
+            }
         }
     }
 
