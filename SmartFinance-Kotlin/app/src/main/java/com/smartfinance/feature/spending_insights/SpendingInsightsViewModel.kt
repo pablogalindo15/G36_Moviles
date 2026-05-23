@@ -52,6 +52,7 @@ class SpendingInsightsViewModel @Inject constructor(
                 if (allExpenses.isEmpty()) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false, 
+                        biggestExpense = null,
                         topCategories = emptyList(), 
                         streaks = emptyList(),
                         evaluatedAtText = null
@@ -72,6 +73,22 @@ class SpendingInsightsViewModel @Inject constructor(
                     .mapValues { entry -> entry.value.sumOf { it.amount } }
                 
                 val totalSpent = totalByCat.values.sum()
+                val biggestExpense = currentMonthExpenses
+                    .maxByOrNull { it.amount }
+                    ?.let { expense ->
+                        val categoryKey = expense.category.lowercase().trim()
+                        BiggestExpenseUiModel(
+                            amountText = formatMoney(expense.currency, expense.amount),
+                            cycleText = formatCycle(currentMonth),
+                            expenseDateText = formatExpenseDate(expense.occurredAt),
+                            categoryTotalText = formatMoney(
+                                expense.currency,
+                                totalByCat[categoryKey] ?: expense.amount
+                            ),
+                            categoryIcon = getIconForCategory(expense.category),
+                            categoryText = formatCategoryName(expense.category)
+                        )
+                    }
                 val topCategories = totalByCat.entries
                     .sortedByDescending { it.value }
                     .map { (cat, amount) ->
@@ -109,6 +126,7 @@ class SpendingInsightsViewModel @Inject constructor(
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
+                    biggestExpense = biggestExpense,
                     topCategories = topCategories,
                     streaks = streaks,
                     evaluatedAtText = evaluatedAtText
@@ -127,6 +145,26 @@ class SpendingInsightsViewModel @Inject constructor(
         return when(category.lowercase().trim()) {
             "utilities", "bills" -> "Bills"
             else -> category.trim().replaceFirstChar { it.titlecase(Locale.getDefault()) }
+        }
+    }
+
+    private fun formatMoney(currency: String, amount: Double): String {
+        return "${currency.uppercase(Locale.US)} ${String.format(Locale.US, "%,.2f", amount)}"
+    }
+
+    private fun formatCycle(cycle: YearMonth): String {
+        val formatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
+        val start = cycle.atDay(1)
+        val end = cycle.atEndOfMonth()
+        return "${start.format(formatter)} - ${end.format(formatter)}, ${cycle.year}"
+    }
+
+    private fun formatExpenseDate(rawDate: String): String {
+        return try {
+            OffsetDateTime.parse(rawDate)
+                .format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US))
+        } catch (_: Exception) {
+            rawDate
         }
     }
 

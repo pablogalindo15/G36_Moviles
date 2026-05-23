@@ -30,8 +30,27 @@ interface SmartFinanceDao {
     @Query("SELECT * FROM local_expense WHERE userId = :userId ORDER BY occurredAt DESC")
     fun getExpenses(userId: String): Flow<List<LocalExpense>>
 
+    @Query("SELECT * FROM local_expense WHERE id = :expenseId LIMIT 1")
+    suspend fun getExpenseById(expenseId: String): LocalExpense?
+
     @Query("DELETE FROM local_expense WHERE id = :expenseId")
     suspend fun deleteExpense(expenseId: String)
+
+    @Query(
+        """
+        UPDATE local_expense
+        SET receiptImageUrl = :receiptImageUrl,
+            receiptLocalUri = :receiptLocalUri,
+            receiptSyncStatus = :receiptSyncStatus
+        WHERE id = :expenseId
+        """
+    )
+    suspend fun updateExpenseReceipt(
+        expenseId: String,
+        receiptImageUrl: String?,
+        receiptLocalUri: String?,
+        receiptSyncStatus: String
+    )
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveSavingsProjectionCache(cache: LocalSavingsProjectionCache)

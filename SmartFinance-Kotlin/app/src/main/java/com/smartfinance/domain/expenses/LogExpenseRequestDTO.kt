@@ -8,5 +8,7 @@ data class LogExpenseRequestDTO(
     val currency: String,
     val category: String,
     val note: String,
-    val occurredAt: LocalDateTime
+    val occurredAt: LocalDateTime,
+    val receiptImageBytes: ByteArray? = null,
+    val receiptLocalUri: String? = null
 )

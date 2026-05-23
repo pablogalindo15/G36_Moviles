@@ -36,7 +36,10 @@ data class LocalExpense(
     val note: String?,
     val occurredAt: String,
     val createdAt: String,
-    val clientUuid: String
+    val clientUuid: String,
+    val receiptImageUrl: String?,
+    val receiptLocalUri: String?,
+    val receiptSyncStatus: String
 )
 
 @Entity(tableName = "local_savings_projection")

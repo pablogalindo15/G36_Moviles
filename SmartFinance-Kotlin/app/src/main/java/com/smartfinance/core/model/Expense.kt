@@ -11,7 +11,8 @@ data class ExpenseInsert(
     val category: String,
     val note: String? = null,
     @SerialName("occurred_at") val occurredAt: String,
-    @SerialName("client_uuid") val clientUuid: String
+    @SerialName("client_uuid") val clientUuid: String,
+    @SerialName("receipt_image_url") val receiptImageUrl: String? = null
 )
 
 @Serializable
@@ -24,5 +25,6 @@ data class ExpenseRecord(
     val note: String? = null,
     @SerialName("occurred_at") val occurredAt: String,
     @SerialName("created_at") val createdAt: String,
-    @SerialName("client_uuid") val clientUuid: String
+    @SerialName("client_uuid") val clientUuid: String,
+    @SerialName("receipt_image_url") val receiptImageUrl: String? = null
 )

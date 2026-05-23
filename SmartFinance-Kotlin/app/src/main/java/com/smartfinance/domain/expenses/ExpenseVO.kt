@@ -9,5 +9,7 @@ data class ExpenseVO(
     val note: String?,
     val occurredAt: String,
     val createdAt: String,
-    val clientUuid: String
+    val clientUuid: String,
+    val receiptImageUrl: String? = null,
+    val receiptLocalUri: String? = null
 )

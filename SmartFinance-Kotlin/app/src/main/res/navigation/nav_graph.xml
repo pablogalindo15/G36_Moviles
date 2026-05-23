@@ -143,6 +143,11 @@
             android:name="occurredAt"
             app:argType="string" />
 
+        <argument
+            android:name="receiptImageUrl"
+            app:argType="string"
+            app:nullable="true" />
+
     </fragment>
 
 </navigation>

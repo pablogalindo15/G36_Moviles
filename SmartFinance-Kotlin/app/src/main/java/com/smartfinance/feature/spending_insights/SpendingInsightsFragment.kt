@@ -11,6 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.smartfinance.R
 import com.smartfinance.databinding.FragmentSpendingInsightsBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -73,9 +74,23 @@ class SpendingInsightsFragment : Fragment() {
         binding.insightsErrorTextView.isVisible = state.errorMessage != null
         binding.insightsErrorTextView.text = state.errorMessage
 
-        // Control de visibilidad de las tarjetas
+        val hasBiggestExpense = state.biggestExpense != null
         val hasCategories = state.topCategories.isNotEmpty()
         val hasStreaks = state.streaks.isNotEmpty()
+
+        binding.biggestExpenseCard.isVisible = !state.isLoading && hasBiggestExpense
+        state.biggestExpense?.let { biggestExpense ->
+            binding.biggestExpenseAmountTextView.text = biggestExpense.amountText
+            binding.biggestExpenseCycleTextView.text = biggestExpense.cycleText
+            binding.biggestExpenseDateTextView.text = biggestExpense.expenseDateText
+            binding.biggestExpenseCategoryTotalTextView.text =
+                getString(
+                    R.string.biggest_expense_category_total,
+                    biggestExpense.categoryTotalText
+                )
+            binding.biggestExpenseCategoryIconTextView.text = biggestExpense.categoryIcon
+            binding.biggestExpenseCategoryTextView.text = biggestExpense.categoryText
+        }
 
         binding.topCategoriesCard.isVisible = !state.isLoading && hasCategories
         categoryInsightsAdapter.submitList(state.topCategories)
@@ -84,9 +99,9 @@ class SpendingInsightsFragment : Fragment() {
         binding.streaksDescriptionTextView.text = state.evaluatedAtText
         streaksAdapter.submitList(state.streaks)
 
-        // Estado vacío global
         binding.emptyInsightsTextView.isVisible = 
-            !state.isLoading && state.errorMessage == null && !hasCategories && !hasStreaks
+            !state.isLoading && state.errorMessage == null &&
+                !hasBiggestExpense && !hasCategories && !hasStreaks
     }
 
     override fun onDestroyView() {

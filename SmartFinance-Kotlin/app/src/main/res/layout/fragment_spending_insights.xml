@@ -54,7 +54,6 @@
             android:textSize="14sp"
             android:visibility="gone" />
 
-        <!-- Spending by Category Card -->
         <LinearLayout
             android:id="@+id/topCategoriesCard"
             android:layout_width="match_parent"
@@ -128,6 +127,97 @@
                 android:layout_marginTop="18dp"
                 android:nestedScrollingEnabled="false"
                 tools:listitem="@layout/item_category_streak" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/biggestExpenseCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/bg_expense_item"
+            android:orientation="vertical"
+            android:padding="18dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/biggest_expense_title"
+                android:textColor="#111827"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/biggestExpenseCycleTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="#6B7280"
+                android:textSize="14sp"
+                tools:text="May 1 - May 31, 2026" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/biggestExpenseAmountTextView"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="#111827"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    tools:text="USD 120.00" />
+
+                <TextView
+                    android:id="@+id/biggestExpenseDateTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:textColor="#6B7280"
+                    android:textSize="13sp"
+                    tools:text="May 12, 2026" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/biggestExpenseCategoryTotalTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="#16A34A"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                tools:text="Total in category: USD 340.00" />
+
+            <LinearLayout
+                android:id="@+id/biggestExpenseCategoryRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/biggestExpenseCategoryIconTextView"
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    tools:text="🍴" />
+
+                <TextView
+                    android:id="@+id/biggestExpenseCategoryTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:textColor="#6B7280"
+                    android:textSize="14sp"
+                    tools:text="Food" />
+            </LinearLayout>
         </LinearLayout>
 
         <TextView

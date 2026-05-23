@@ -7,6 +7,7 @@ import com.smartfinance.data.local.toLocal
 import com.smartfinance.domain.expenses.ExpenseVO
 import com.smartfinance.domain.expenses.LogExpenseRequestDTO
 import com.smartfinance.domain.expenses.UpdateExpenseRequestDTO
+import kotlinx.coroutines.flow.first
 import java.time.ZoneId
 import java.util.UUID
 
@@ -16,7 +17,7 @@ class SupabaseExpenseAdapter(
 ) : ExpenseRepository {
 
     override suspend fun logExpense(request: LogExpenseRequestDTO): ExpenseVO {
-        val remoteExpense = remoteDataSource.insertExpense(
+        var remoteExpense = remoteDataSource.insertExpense(
             ExpenseInsert(
                 userId = request.userId,
                 amount = request.amount,
@@ -31,24 +32,95 @@ class SupabaseExpenseAdapter(
             )
         )
 
-        localDao.saveExpense(remoteExpense.toLocal())
+        localDao.saveExpense(
+            remoteExpense.toLocal().copy(
+                receiptLocalUri = request.receiptLocalUri,
+                receiptSyncStatus = if (request.receiptImageBytes == null) "none" else "pending"
+            )
+        )
+
+        request.receiptImageBytes?.let { imageBytes ->
+            val receiptUrl = remoteDataSource.uploadReceiptImage(
+                userId = request.userId,
+                expenseId = remoteExpense.id,
+                imageBytes = imageBytes
+            )
+            remoteExpense = remoteDataSource.updateReceiptImageUrl(remoteExpense.id, receiptUrl)
+            localDao.saveExpense(
+                remoteExpense.toLocal().copy(
+                    receiptLocalUri = request.receiptLocalUri,
+                    receiptSyncStatus = "uploaded"
+                )
+            )
+        }
+
         return remoteExpense.toDomain()
     }
-    override suspend fun getExpensesByUser(userId: String): List<ExpenseVO> {
-        val remoteExpenses = remoteDataSource.getExpensesByUser(userId)
 
-        return remoteExpenses.map { remoteExpense ->
-            remoteExpense.toDomain()
+    override suspend fun getExpensesByUser(userId: String): List<ExpenseVO> {
+        return try {
+            val remoteExpenses = remoteDataSource.getExpensesByUser(userId)
+
+            remoteExpenses.forEach { remoteExpense ->
+                val existing = localDao.getExpenseById(remoteExpense.id)
+                localDao.saveExpense(
+                    remoteExpense.toLocal().copy(
+                        receiptLocalUri = existing?.receiptLocalUri,
+                        receiptSyncStatus = if (remoteExpense.receiptImageUrl.isNullOrBlank()) {
+                            "none"
+                        } else {
+                            "uploaded"
+                        }
+                    )
+                )
+            }
+
+            remoteExpenses.map { remoteExpense ->
+                remoteExpense.toDomain()
+            }
+        } catch (exception: Exception) {
+            localDao.getExpenses(userId).first().map { localExpense ->
+                localExpense.toDomain()
+            }
         }
     }
 
     override suspend fun updateExpense(request: UpdateExpenseRequestDTO): ExpenseVO {
-        val updatedExpense = remoteDataSource.updateExpense(request)
+        var requestToUpdate = request
+        request.receiptImageBytes?.let { imageBytes ->
+            val existing = localDao.getExpenseById(request.expenseId)
+            val userId = existing?.userId ?: remoteDataSource.getExpenseById(request.expenseId).userId
+            val receiptUrl = remoteDataSource.uploadReceiptImage(
+                userId = userId,
+                expenseId = request.expenseId,
+                imageBytes = imageBytes
+            )
+            requestToUpdate = request.copy(receiptImageUrl = receiptUrl)
+            localDao.updateExpenseReceipt(
+                expenseId = request.expenseId,
+                receiptImageUrl = receiptUrl,
+                receiptLocalUri = request.receiptLocalUri,
+                receiptSyncStatus = "uploaded"
+            )
+        }
+
+        val updatedExpense = remoteDataSource.updateExpense(requestToUpdate)
+        localDao.saveExpense(
+            updatedExpense.toLocal().copy(
+                receiptLocalUri = request.receiptLocalUri,
+                receiptSyncStatus = if (updatedExpense.receiptImageUrl.isNullOrBlank()) {
+                    "none"
+                } else {
+                    "uploaded"
+                }
+            )
+        )
 
         return updatedExpense.toDomain()
     }
 
     override suspend fun deleteExpense(expenseId: String) {
         remoteDataSource.deleteExpense(expenseId)
+        localDao.deleteExpense(expenseId)
     }
 }

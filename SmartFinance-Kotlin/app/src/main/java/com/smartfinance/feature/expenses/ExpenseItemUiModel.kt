@@ -7,5 +7,6 @@ data class ExpenseItemUiModel(
     val dateText: String,
     val amountText: String,
     val icon: String,
-    val occurredAt: String
+    val occurredAt: String,
+    val receiptImageUrl: String?
 )
