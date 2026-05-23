@@ -12,7 +12,7 @@ import androidx.room.RoomDatabase
         LocalComparativeInsightCache::class,
         LocalTopCategoriesCache::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class SmartFinanceDatabase : RoomDatabase() {

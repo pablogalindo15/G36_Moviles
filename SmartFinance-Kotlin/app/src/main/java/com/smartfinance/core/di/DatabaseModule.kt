@@ -121,6 +121,16 @@ object DatabaseModule {
         }
     }
 
+    private val migration4To5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE local_expense ADD COLUMN receiptImageUrl TEXT")
+            db.execSQL("ALTER TABLE local_expense ADD COLUMN receiptLocalUri TEXT")
+            db.execSQL(
+                "ALTER TABLE local_expense ADD COLUMN receiptSyncStatus TEXT NOT NULL DEFAULT 'none'"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SmartFinanceDatabase {
@@ -132,6 +142,7 @@ object DatabaseModule {
             .addMigrations(migration1To2)
             .addMigrations(migration2To3)
             .addMigrations(migration3To4)
+            .addMigrations(migration4To5)
             .build()
     }
 

@@ -2,12 +2,17 @@ package com.smartfinance.feature.expenses
 
 import android.app.AlertDialog
 import android.app.DatePickerDialog
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import android.widget.PopupMenu
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -16,6 +21,10 @@ import com.smartfinance.domain.expenses.ExpenseApplicationService
 import com.smartfinance.domain.expenses.UpdateExpenseRequestDTO
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.net.URL
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -41,6 +50,27 @@ class ExpenseDetailFragment : Fragment() {
     private var initialNote = ""
     private var initialAmount = 0.0
     private var initialDateText = ""
+    private var initialReceiptImageUrl: String? = null
+    private var selectedReceiptUri: Uri? = null
+    private var cameraReceiptUri: Uri? = null
+
+    private val pickReceiptLauncher = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            selectedReceiptUri = uri
+            renderReceipt(uri)
+        }
+    }
+
+    private val takeReceiptLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraReceiptUri != null) {
+            selectedReceiptUri = cameraReceiptUri
+            renderReceipt(cameraReceiptUri)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -70,6 +100,7 @@ class ExpenseDetailFragment : Fragment() {
         val note = requireArguments().getString(ARG_NOTE).orEmpty()
         val date = requireArguments().getString(ARG_DATE).orEmpty()
         val icon = requireArguments().getString(ARG_ICON).orEmpty()
+        initialReceiptImageUrl = requireArguments().getString(ARG_RECEIPT_IMAGE_URL)
 
         initialCategory = category
         initialNote = note
@@ -81,6 +112,7 @@ class ExpenseDetailFragment : Fragment() {
         binding.detailCategoryEditText.setText(category)
         binding.detailNoteEditText.setText(note)
         binding.detailDateEditText.setText(date)
+        renderRemoteReceipt(initialReceiptImageUrl)
     }
 
     private fun setupListeners() {
@@ -111,6 +143,21 @@ class ExpenseDetailFragment : Fragment() {
         binding.detailCategoryEditText.setOnClickListener {
             if (isEditMode) showCategoryPicker()
         }
+
+        binding.changeReceiptCameraButton.setOnClickListener {
+            if (isEditMode) {
+                cameraReceiptUri = createImageUri()
+                takeReceiptLauncher.launch(cameraReceiptUri)
+            }
+        }
+
+        binding.changeReceiptGalleryButton.setOnClickListener {
+            if (isEditMode) {
+                pickReceiptLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
+        }
     }
 
     private fun setEditMode(enabled: Boolean) {
@@ -125,6 +172,7 @@ class ExpenseDetailFragment : Fragment() {
         binding.detailCategoryEditText.isClickable = enabled
         binding.detailCategoryEditText.isFocusable = false
 
+        binding.detailReceiptActionsContainer.visibility = if (enabled) View.VISIBLE else View.GONE
         binding.editActionsContainer.visibility = if (enabled) View.VISIBLE else View.GONE
         binding.editExpenseIconButton.visibility = if (enabled) View.GONE else View.VISIBLE
         binding.deleteExpenseIconButton.visibility = if (enabled) View.GONE else View.VISIBLE
@@ -136,6 +184,8 @@ class ExpenseDetailFragment : Fragment() {
         binding.detailNoteEditText.setText(initialNote)
         binding.detailDateEditText.setText(initialDateText)
         selectedDate = parseLocalDate(originalOccurredAt)
+        selectedReceiptUri = null
+        renderRemoteReceipt(initialReceiptImageUrl)
     }
 
     private fun showDatePicker() {
@@ -195,15 +245,26 @@ class ExpenseDetailFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                expenseApplicationService.updateExpense(
-                    UpdateExpenseRequestDTO(
-                        expenseId = expenseId,
-                        category = category,
-                        note = note,
-                        amount = amount,
-                        occurredAt = updatedOccurredAt
+                val receiptPayload = selectedReceiptUri?.let { uri ->
+                    withContext(Dispatchers.IO) {
+                        copyReceiptToLocalCache(uri)
+                    }
+                }
+
+                withContext(Dispatchers.IO) {
+                    expenseApplicationService.updateExpense(
+                        UpdateExpenseRequestDTO(
+                            expenseId = expenseId,
+                            category = category,
+                            note = note,
+                            amount = amount,
+                            occurredAt = updatedOccurredAt,
+                            receiptImageBytes = receiptPayload?.first,
+                            receiptLocalUri = receiptPayload?.second,
+                            receiptImageUrl = initialReceiptImageUrl
+                        )
                     )
-                )
+                }
 
                 Toast.makeText(
                     requireContext(),
@@ -302,6 +363,65 @@ class ExpenseDetailFragment : Fragment() {
         popupMenu.show()
     }
 
+    private fun renderReceipt(uri: Uri?) {
+        binding.detailReceiptImageView.visibility = if (uri == null) View.GONE else View.VISIBLE
+        binding.detailReceiptEmptyTextView.visibility = if (uri == null) View.VISIBLE else View.GONE
+        binding.detailReceiptImageView.setImageURI(uri)
+    }
+
+    private fun renderRemoteReceipt(receiptUrl: String?) {
+        if (receiptUrl.isNullOrBlank()) {
+            renderReceipt(null)
+            return
+        }
+
+        lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    URL(receiptUrl).openStream().use { stream ->
+                        BitmapFactory.decodeStream(stream)
+                    }
+                }.getOrNull()
+            }
+
+            if (bitmap != null) {
+                binding.detailReceiptImageView.visibility = View.VISIBLE
+                binding.detailReceiptEmptyTextView.visibility = View.GONE
+                binding.detailReceiptImageView.setImageBitmap(bitmap)
+            } else {
+                renderReceipt(null)
+            }
+        }
+    }
+
+    private fun createImageUri(): Uri {
+        val imageFile = File.createTempFile(
+            "expense_receipt_${System.currentTimeMillis()}",
+            ".jpg",
+            requireContext().cacheDir
+        )
+
+        return FileProvider.getUriForFile(
+            requireContext(),
+            "${requireContext().packageName}.provider",
+            imageFile
+        )
+    }
+
+    private fun copyReceiptToLocalCache(uri: Uri): Pair<ByteArray, String>? {
+        val imageBytes = requireContext().contentResolver.openInputStream(uri)?.use {
+            it.readBytes()
+        } ?: return null
+
+        val cachedFile = File(
+            requireContext().cacheDir,
+            "expense_receipt_cache_${System.currentTimeMillis()}.jpg"
+        )
+        cachedFile.writeBytes(imageBytes)
+
+        return imageBytes to Uri.fromFile(cachedFile).toString()
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
@@ -315,5 +435,6 @@ class ExpenseDetailFragment : Fragment() {
         const val ARG_DATE = "date"
         const val ARG_OCCURRED_AT = "occurredAt"
         const val ARG_ICON = "icon"
+        const val ARG_RECEIPT_IMAGE_URL = "receiptImageUrl"
     }
 }

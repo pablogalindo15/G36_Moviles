@@ -160,7 +160,8 @@ class MyExpensesViewModel @Inject constructor(
             dateText = formatDate(occurredAt),
             amountText = "${currency.uppercase()} ${String.format(Locale.US, "%.2f", amount)}",
             icon = getIconForCategory(category),
-            occurredAt = occurredAt
+            occurredAt = occurredAt,
+            receiptImageUrl = receiptImageUrl
         )
     }
 

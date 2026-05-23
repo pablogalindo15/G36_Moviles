@@ -189,7 +189,8 @@ class MyExpensesFragment : Fragment() {
                 ExpenseDetailFragment.ARG_NOTE to expense.note,
                 ExpenseDetailFragment.ARG_DATE to expense.dateText,
                 ExpenseDetailFragment.ARG_OCCURRED_AT to expense.occurredAt,
-                ExpenseDetailFragment.ARG_ICON to expense.icon
+                ExpenseDetailFragment.ARG_ICON to expense.icon,
+                ExpenseDetailFragment.ARG_RECEIPT_IMAGE_URL to expense.receiptImageUrl
             )
         )
     }

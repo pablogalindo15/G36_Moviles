@@ -201,6 +201,60 @@
                 app:strokeColor="@color/colorGray" />
         </LinearLayout>
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/expense_receipt_label"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/receiptPreviewImageView"
+            android:layout_width="match_parent"
+            android:layout_height="160dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_expense_item"
+            android:contentDescription="@string/expense_receipt_label"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            tools:src="@drawable/ic_launcher_background"
+            tools:visibility="visible" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonTakeReceiptPhoto"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/expense_receipt_take_photo"
+                android:textAllCaps="false"
+                android:textColor="@color/colorTextPrimary"
+                app:cornerRadius="18dp"
+                app:strokeColor="@color/colorGray" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonChooseReceiptPhoto"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="@string/expense_receipt_choose_gallery"
+                android:textAllCaps="false"
+                android:textColor="@color/colorTextPrimary"
+                app:cornerRadius="18dp"
+                app:strokeColor="@color/colorGray" />
+        </LinearLayout>
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonSaveExpense"
             android:layout_width="match_parent"

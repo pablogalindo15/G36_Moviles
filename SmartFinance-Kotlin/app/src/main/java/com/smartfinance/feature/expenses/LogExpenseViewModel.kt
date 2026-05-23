@@ -8,10 +8,12 @@ import com.smartfinance.domain.expenses.ExpenseVO
 import com.smartfinance.domain.expenses.LogExpenseRequestDTO
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class LogExpenseViewModel @Inject constructor(
@@ -26,7 +28,9 @@ class LogExpenseViewModel @Inject constructor(
             _saveExpenseState.value = UiState.Loading
             try {
                 _saveExpenseState.value = UiState.Success(
-                    expenseApplicationService.logExpense(request)
+                    withContext(Dispatchers.IO) {
+                        expenseApplicationService.logExpense(request)
+                    }
                 )
             } catch (e: Exception) {
                 _saveExpenseState.value = UiState.Error(

@@ -53,7 +53,10 @@ fun ExpenseRecord.toLocal() = LocalExpense(
     note = note,
     occurredAt = occurredAt,
     createdAt = createdAt,
-    clientUuid = clientUuid
+    clientUuid = clientUuid,
+    receiptImageUrl = receiptImageUrl,
+    receiptLocalUri = null,
+    receiptSyncStatus = if (receiptImageUrl.isNullOrBlank()) "none" else "uploaded"
 )
 
 fun ExpenseRecord.toDomain() = ExpenseVO(
@@ -65,5 +68,20 @@ fun ExpenseRecord.toDomain() = ExpenseVO(
     note = note,
     occurredAt = occurredAt,
     createdAt = createdAt,
-    clientUuid = clientUuid
+    clientUuid = clientUuid,
+    receiptImageUrl = receiptImageUrl
+)
+
+fun LocalExpense.toDomain() = ExpenseVO(
+    id = id,
+    userId = userId,
+    amount = amount,
+    currency = currency,
+    category = category,
+    note = note,
+    occurredAt = occurredAt,
+    createdAt = createdAt,
+    clientUuid = clientUuid,
+    receiptImageUrl = receiptImageUrl,
+    receiptLocalUri = receiptLocalUri
 )

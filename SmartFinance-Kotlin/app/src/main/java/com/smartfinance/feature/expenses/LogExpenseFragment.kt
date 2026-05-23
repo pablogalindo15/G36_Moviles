@@ -2,12 +2,16 @@ package com.smartfinance.feature.expenses
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.net.Uri
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.Spanned
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -26,7 +30,10 @@ import dagger.hilt.android.AndroidEntryPoint
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.io.File
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class LogExpenseFragment : Fragment() {
@@ -43,6 +50,26 @@ class LogExpenseFragment : Fragment() {
     private var amountWarningCount = 0
     private var noteLengthWarningCount = 0
     private var noteSqlWarningCount = 0
+    private var selectedReceiptUri: Uri? = null
+    private var cameraReceiptUri: Uri? = null
+
+    private val pickReceiptLauncher = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            selectedReceiptUri = uri
+            renderReceiptPreview(uri)
+        }
+    }
+
+    private val takeReceiptLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraReceiptUri != null) {
+            selectedReceiptUri = cameraReceiptUri
+            renderReceiptPreview(cameraReceiptUri)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -140,6 +167,17 @@ class LogExpenseFragment : Fragment() {
             showTimePicker()
         }
 
+        binding.buttonTakeReceiptPhoto.setOnClickListener {
+            cameraReceiptUri = createImageUri()
+            takeReceiptLauncher.launch(cameraReceiptUri)
+        }
+
+        binding.buttonChooseReceiptPhoto.setOnClickListener {
+            pickReceiptLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
+        }
+
         binding.buttonSaveExpense.setOnClickListener {
             submitExpense()
         }
@@ -233,16 +271,59 @@ class LogExpenseFragment : Fragment() {
 
         val resolvedCategory = category ?: return
 
-        viewModel.saveExpense(
-            LogExpenseRequestDTO(
-                userId = userId.orEmpty(),
-                amount = amount,
-                currency = currency,
-                category = resolvedCategory,
-                note = note,
-                occurredAt = selectedDateTime
+        viewLifecycleOwner.lifecycleScope.launch {
+            val receiptPayload = selectedReceiptUri?.let { uri ->
+                withContext(Dispatchers.IO) {
+                    copyReceiptToLocalCache(uri)
+                }
+            }
+
+            viewModel.saveExpense(
+                LogExpenseRequestDTO(
+                    userId = userId.orEmpty(),
+                    amount = amount,
+                    currency = currency,
+                    category = resolvedCategory,
+                    note = note,
+                    occurredAt = selectedDateTime,
+                    receiptImageBytes = receiptPayload?.first,
+                    receiptLocalUri = receiptPayload?.second
+                )
             )
+        }
+    }
+
+    private fun renderReceiptPreview(uri: Uri?) {
+        binding.receiptPreviewImageView.visibility = if (uri == null) View.GONE else View.VISIBLE
+        binding.receiptPreviewImageView.setImageURI(uri)
+    }
+
+    private fun createImageUri(): Uri {
+        val imageFile = File.createTempFile(
+            "expense_receipt_${System.currentTimeMillis()}",
+            ".jpg",
+            requireContext().cacheDir
         )
+
+        return FileProvider.getUriForFile(
+            requireContext(),
+            "${requireContext().packageName}.provider",
+            imageFile
+        )
+    }
+
+    private fun copyReceiptToLocalCache(uri: Uri): Pair<ByteArray, String>? {
+        val imageBytes = requireContext().contentResolver.openInputStream(uri)?.use {
+            it.readBytes()
+        } ?: return null
+
+        val cachedFile = File(
+            requireContext().cacheDir,
+            "expense_receipt_cache_${System.currentTimeMillis()}.jpg"
+        )
+        cachedFile.writeBytes(imageBytes)
+
+        return imageBytes to Uri.fromFile(cachedFile).toString()
     }
 
     private fun updateSaveButtonState() {

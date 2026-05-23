@@ -34,6 +34,12 @@
     <string name="comparison_unavailable">Not enough similar users yet.</string>
     <string name="comparison_user_label">You</string>
     <string name="comparison_cohort_label">Cohort avg</string>
+    <string name="biggest_expense_title">Biggest expense this cycle</string>
+    <string name="biggest_expense_loading">Loading biggest expense...</string>
+    <string name="biggest_expense_empty">No expenses logged this cycle yet.</string>
+    <string name="biggest_expense_cycle">Cycle: %1$s</string>
+    <string name="biggest_expense_category_total">Total in category: %1$s</string>
+    <string name="biggest_expense_category">Category: %1$s</string>
     <string name="add_expense">Add expense</string>
     <string name="expense_cancel">Cancel</string>
     <string name="log_expense_title">Log expense</string>
@@ -44,6 +50,10 @@
     <string name="expense_note_label">Note (optional)</string>
     <string name="expense_note_hint">What was it for?</string>
     <string name="expense_date_label">Date</string>
+    <string name="expense_receipt_label">Receipt photo</string>
+    <string name="expense_receipt_take_photo">Take photo</string>
+    <string name="expense_receipt_choose_gallery">Gallery</string>
+    <string name="expense_receipt_empty">No receipt photo attached.</string>
     <string name="expense_save">Save expense</string>
     <string name="expense_amount_error">Enter an amount greater than zero.</string>
     <string name="expense_amount_too_high">The amount is too high. Enter a lower amount.</string>

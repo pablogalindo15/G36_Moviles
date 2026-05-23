@@ -5,6 +5,7 @@ import com.smartfinance.core.model.ExpenseInsert
 import com.smartfinance.core.model.ExpenseRecord
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.storage.storage
 import javax.inject.Inject
 
 class ExpenseRemoteDataSource @Inject constructor(
@@ -27,6 +28,16 @@ class ExpenseRemoteDataSource @Inject constructor(
             .decodeList<ExpenseRecord>()
     }
 
+    suspend fun getExpenseById(expenseId: String): ExpenseRecord {
+        return supabaseClient.from("expenses")
+            .select {
+                filter {
+                    eq("id", expenseId)
+                }
+            }
+            .decodeSingle<ExpenseRecord>()
+    }
+
     suspend fun updateExpense(request: UpdateExpenseRequestDTO): ExpenseRecord {
         return supabaseClient.from("expenses")
             .update(
@@ -35,6 +46,7 @@ class ExpenseRemoteDataSource @Inject constructor(
                     set("note", request.note)
                     set("amount", request.amount)
                     set("occurred_at", request.occurredAt)
+                    set("receipt_image_url", request.receiptImageUrl)
                 }
             ) {
                 filter {
@@ -45,6 +57,32 @@ class ExpenseRemoteDataSource @Inject constructor(
             .decodeSingle<ExpenseRecord>()
     }
 
+    suspend fun updateReceiptImageUrl(expenseId: String, receiptImageUrl: String?): ExpenseRecord {
+        return supabaseClient.from("expenses")
+            .update(
+                {
+                    set("receipt_image_url", receiptImageUrl)
+                }
+            ) {
+                filter {
+                    eq("id", expenseId)
+                }
+                select()
+            }
+            .decodeSingle<ExpenseRecord>()
+    }
+
+    suspend fun uploadReceiptImage(
+        userId: String,
+        expenseId: String,
+        imageBytes: ByteArray
+    ): String {
+        val path = "$userId/$expenseId.jpg"
+        val bucket = supabaseClient.storage.from(RECEIPTS_BUCKET)
+        bucket.upload(path, imageBytes, upsert = true)
+        return bucket.publicUrl(path)
+    }
+
     suspend fun deleteExpense(expenseId: String) {
         supabaseClient.from("expenses")
             .delete {
@@ -52,5 +90,9 @@ class ExpenseRemoteDataSource @Inject constructor(
                     eq("id", expenseId)
                 }
             }
+    }
+
+    private companion object {
+        const val RECEIPTS_BUCKET = "expense-receipts"
     }
 }
