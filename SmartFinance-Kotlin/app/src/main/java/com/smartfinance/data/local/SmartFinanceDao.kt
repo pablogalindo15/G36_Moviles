@@ -27,7 +27,7 @@ interface SmartFinanceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveExpense(expense: LocalExpense)
 
-    @Query("SELECT * FROM local_expense WHERE userId = :userId ORDER BY occurredAt DESC")
+    @Query("SELECT * FROM local_expense WHERE userId = :userId AND syncStatus != 'PENDING_DELETE' ORDER BY occurredAt DESC")
     fun getExpenses(userId: String): Flow<List<LocalExpense>>
 
     @Query("SELECT * FROM local_expense WHERE id = :expenseId LIMIT 1")
@@ -35,6 +35,9 @@ interface SmartFinanceDao {
 
     @Query("DELETE FROM local_expense WHERE id = :expenseId")
     suspend fun deleteExpense(expenseId: String)
+
+    @Query("SELECT * FROM local_expense WHERE syncStatus != 'SYNCED'")
+    suspend fun getPendingSyncExpenses(): List<LocalExpense>
 
     @Query(
         """

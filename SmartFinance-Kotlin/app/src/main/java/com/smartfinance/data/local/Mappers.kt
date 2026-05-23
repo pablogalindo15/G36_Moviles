@@ -25,7 +25,7 @@ fun LocalFinancialSetup.toDomain() = FinancialSetup(
 )
 
 fun GeneratedPlan.toLocal() = LocalPlan(
-    id = java.util.UUID.randomUUID().toString(), // Or use a real ID if available from backend
+    id = java.util.UUID.randomUUID().toString(),
     userId = userId,
     financialSetupId = financialSetupId,
     safeToSpend = safeToSpend,
@@ -44,7 +44,7 @@ fun LocalPlan.toDomain() = GeneratedPlan(
     insightMessage = insightMessage
 )
 
-fun ExpenseRecord.toLocal() = LocalExpense(
+fun ExpenseRecord.toLocal(syncStatus: String = "SYNCED") = LocalExpense(
     id = id,
     userId = userId,
     amount = amount,
@@ -56,7 +56,8 @@ fun ExpenseRecord.toLocal() = LocalExpense(
     clientUuid = clientUuid,
     receiptImageUrl = receiptImageUrl,
     receiptLocalUri = null,
-    receiptSyncStatus = if (receiptImageUrl.isNullOrBlank()) "none" else "uploaded"
+    receiptSyncStatus = if (receiptImageUrl.isNullOrBlank()) "none" else "uploaded",
+    syncStatus = syncStatus
 )
 
 fun ExpenseRecord.toDomain() = ExpenseVO(

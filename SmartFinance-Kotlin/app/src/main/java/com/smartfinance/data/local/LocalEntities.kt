@@ -39,7 +39,8 @@ data class LocalExpense(
     val clientUuid: String,
     val receiptImageUrl: String?,
     val receiptLocalUri: String?,
-    val receiptSyncStatus: String
+    val receiptSyncStatus: String,
+    val syncStatus: String = "SYNCED" // "SYNCED", "PENDING_INSERT", "PENDING_UPDATE", "PENDING_DELETE"
 )
 
 @Entity(tableName = "local_savings_projection")
